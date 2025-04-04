@@ -1,7 +1,7 @@
 import numpy as np
 from datasets import load_dataset
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 import os
 
 class WT2Dataset:
