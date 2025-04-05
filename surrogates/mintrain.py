@@ -14,7 +14,7 @@ class MinTrainSurrogate:
     Surrogate model that trains an RNN architecture for a fixed number of epochs.
     Used as a faster fitness approximation in evolutionary algorithms for Neural Architecture Search.
     """
-    def __init__(self, dataset, num_epochs=50, batch_size=128, verbose=0, dataset_name="default", timestamp=None):
+    def __init__(self, dataset, dataset_name="default", num_epochs=50, batch_size=128, verbose=0, timestamp=None):
         """
         Initialize the minimum training surrogate model.
         

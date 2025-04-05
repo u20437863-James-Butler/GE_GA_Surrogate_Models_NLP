@@ -62,7 +62,7 @@ dataset = supported_datasets[dataset_name]
 
 supported_surrogates = {
     # 'base': FullTrainSurrogate(dataset, max_epochs=50, batch_size=128, patience=5, verbose=1),
-    'mt': MinTrainSurrogate(dataset, num_epochs=50, batch_size=128, verbose=1),
+    'mt': MinTrainSurrogate(dataset, dataset_name=dataset_name, num_epochs=2, batch_size=128, verbose=1),
     # 'rf': RandomForestSurrogate(dataset, initial_models=30, train_epochs=5, retrain_interval=20, verbose=1),
 }
 
@@ -70,7 +70,7 @@ surrogate_name = 'mt'
 surrogate = supported_surrogates[surrogate_name]
 
 supported_optimizers = {
-    'ga': GeneticAlgorithm(surrogate, pop_size=20, generations=5, mutation_rate=0.2, crossover_rate=0.8),
+    'ga': GeneticAlgorithm(surrogate, pop_size=2, generations=5, mutation_rate=0.2, crossover_rate=0.8),
     # 'ge': GrammaticalEvolution(),
     # 'cell_ga': CellBasedGeneticAlgorithm(),
     # 'cell_ge': CellBasedGrammaticalEvolution(),

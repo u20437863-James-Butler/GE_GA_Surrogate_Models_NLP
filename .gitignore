@@ -5,3 +5,4 @@ runners/datasets/
 logs/*
 !logs/__init__.py
 !logs/minTrainLogger.py
+mintrain_logs*/
