@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import time
 import os
@@ -176,9 +175,6 @@ class SurrEvaluator:
         print(f"Total time: {total_elapsed:.1f}s")
         print(f"Best architecture: {self.best_individual.__dict__ if self.best_individual else None}")
         
-        # Plot results across runs
-        self.plot_run_results()
-        
         return self.best_individual
     
     def evaluate_population(self, population):
@@ -193,53 +189,3 @@ class SurrEvaluator:
             fitnesses.append(fitness)
             
         return fitnesses
-    
-    def plot_progress(self):
-        """Plot optimization progress for the best run"""
-        plt.figure(figsize=(10, 6))
-        
-        # Convert fitness back to perplexity for plotting
-        perplexity_history = [-fitness for fitness in self.fitness_history]
-        best_perplexity_history = [-fitness for fitness in self.best_fitness_history]
-        
-        plt.plot(perplexity_history, 'o', alpha=0.3, label='Individual Perplexity')
-        plt.plot(best_perplexity_history, '-', label='Best Perplexity')
-        
-        plt.xlabel('Evaluation')
-        plt.ylabel('Validation Perplexity (lower is better)')
-        plt.title('Neural Architecture Search Progress')
-        plt.legend()
-        plt.grid(True)
-        
-        # Save plot
-        os.makedirs('results', exist_ok=True)
-        plt.savefig('results/nas_progress.png')
-        plt.close()
-        
-    def plot_run_results(self):
-        """Plot results across multiple runs"""
-        if not self.run_results:
-            return
-        
-        plt.figure(figsize=(10, 6))
-        
-        # Extract perplexities from each run
-        seeds = [result['seed'] for result in self.run_results]
-        perplexities = [result['best_perplexity'] for result in self.run_results]
-        
-        # Bar chart of perplexities by seed
-        plt.bar(range(len(seeds)), perplexities)
-        plt.xticks(range(len(seeds)), [f"Seed {seed}" for seed in seeds], rotation=45)
-        plt.axhline(y=np.mean(perplexities), color='r', linestyle='-', label=f'Mean: {np.mean(perplexities):.2f}')
-        
-        plt.xlabel('Run')
-        plt.ylabel('Validation Perplexity (lower is better)')
-        plt.title('Performance Across Multiple Seeds')
-        plt.legend()
-        plt.tight_layout()
-        plt.grid(True, axis='y')
-        
-        # Save plot
-        os.makedirs('results', exist_ok=True)
-        plt.savefig('results/multi_run_results.png')
-        plt.close()
