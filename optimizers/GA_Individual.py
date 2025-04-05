@@ -43,6 +43,20 @@ class Individual:
         hash_id = hashlib.md5(id_string.encode()).hexdigest()[:8]
         return hash_id
     
+    def getIdLong(self):
+        """Generate a unique ID based on individual's architecture"""
+        # Create a string representation of key attributes
+        id_string = (
+            f"LC{self.layer_counts}_" +
+            f"RT{'_'.join(self.rnn_types)}_" +
+            f"U{'_'.join(map(str, self.units))}_" +
+            f"A{'_'.join(self.activations)}_" +
+            f"RS{'_'.join(str(rs) for rs in self.return_sequences)}_" +
+            f"DO{self.dropout:.3f}_" +
+            f"S{self.seed}"
+        )
+        return id_string
+    
     def copy(self):
         """Creates a deep copy of the individual"""
         return Individual(
@@ -70,13 +84,13 @@ class Individual:
         # Add embedding layer to convert token indices to dense vectors
         embedding_dim = 50  # You can adjust this embedding dimension
         
-        # Input shape should be (sequence_length,) for text data
-        # If your input_shape is already (sequence_length, features), you may need to adjust
-        model.add(layers.Embedding(output_dim, embedding_dim, input_length=input_shape[0]))
+        # Input layer - shape should be (sequence_length,) for token indices
+        model.add(layers.Input(shape=(input_shape[0],)))
         
-        # Reshape output to be 3D: (batch_size, sequence_length, embedding_dim)
-        model.add(layers.Reshape((input_shape[0], embedding_dim)))
+        # Add embedding layer - this will convert to (batch_size, sequence_length, embedding_dim)
+        model.add(layers.Embedding(output_dim, embedding_dim))
         
+        print(self.getIdLong())
         # Add the RNN layers
         for i in range(self.layer_counts):
             rnn_layer = getattr(layers, self.rnn_types[i])
