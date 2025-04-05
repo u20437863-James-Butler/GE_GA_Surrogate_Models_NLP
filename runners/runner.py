@@ -70,7 +70,7 @@ surrogate_name = 'mt'
 surrogate = supported_surrogates[surrogate_name]
 
 supported_optimizers = {
-    'ga': GeneticAlgorithm(surrogate, pop_size=2, generations=5, mutation_rate=0.2, crossover_rate=0.8),
+    'ga': GeneticAlgorithm(surrogate, pop_size=1, generations=5, mutation_rate=0.2, crossover_rate=0.8),
     # 'ge': GrammaticalEvolution(),
     # 'cell_ga': CellBasedGeneticAlgorithm(),
     # 'cell_ge': CellBasedGrammaticalEvolution(),
@@ -81,7 +81,7 @@ optimizer = supported_optimizers[optimizer_name]
 
 supported_evaluators = {
     # 'base': Evaluator(optimizer, max_evaluations=5, log_interval=5),
-    'surrogate': SurrEvaluator(optimizer, num_runs=5, log_interval=1)
+    'surrogate': SurrEvaluator(optimizer, num_runs=1, log_interval=1)
 }
 evaluator = supported_evaluators['surrogate']
 
@@ -91,14 +91,6 @@ def main():
     
     # Run the experiment
     best_individual = evaluator.run()
-    
-    # Print the best architecture found
-    print("\nBest Architecture Found:")
-    print(best_individual)
-    
-    # Convert fitness back to perplexity
-    best_perplexity = -best_individual.fitness
-    print(f"Validation Perplexity: {best_perplexity:.2f}")
     
     # Return best individual for further analysis
     return best_individual
