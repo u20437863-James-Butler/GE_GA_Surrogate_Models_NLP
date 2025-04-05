@@ -69,7 +69,13 @@ class Individual:
         
         # Add embedding layer to convert token indices to dense vectors
         embedding_dim = 50  # You can adjust this embedding dimension
+        
+        # Input shape should be (sequence_length,) for text data
+        # If your input_shape is already (sequence_length, features), you may need to adjust
         model.add(layers.Embedding(output_dim, embedding_dim, input_length=input_shape[0]))
+        
+        # Reshape output to be 3D: (batch_size, sequence_length, embedding_dim)
+        model.add(layers.Reshape((input_shape[0], embedding_dim)))
         
         # Add the RNN layers
         for i in range(self.layer_counts):

@@ -81,7 +81,7 @@ optimizer = supported_optimizers[optimizer_name]
 
 supported_evaluators = {
     # 'base': Evaluator(optimizer, max_evaluations=5, log_interval=5),
-    'surrogate': SurrEvaluator(optimizer, max_evaluations=5, log_interval=5)
+    'surrogate': SurrEvaluator(optimizer, num_runs=5, log_interval=1)
 }
 evaluator = supported_evaluators['surrogate']
 

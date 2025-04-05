@@ -48,28 +48,32 @@ class GeneticAlgorithm:
         self.population = [Individual() for _ in range(self.pop_size)]
         return self.population
         
-    def evaluate_only(self, seed=None, base_log_filename=None):
+    def evaluate_only(self, population=None, seed=None, base_log_filename=None):
         """
         Evaluate the population without evolving it.
         Useful for evaluating initial populations or for benchmarking.
         
         Args:
+            population: Optional pre-generated population to evaluate
             seed: Optional seed for weight initialization
             base_log_filename: Base filename for logging
             
         Returns:
             list: List of fitness scores
         """
+        # Use provided population if given, otherwise use the existing one
+        eval_population = population if population is not None else self.population
+        
         if seed is not None:
-            # Regenerate individuals with provided seed for consistent weight initialization
-            for individual in self.population:
+            # Update seeds for consistent weight initialization
+            for individual in eval_population:
                 individual.seed = seed
         
         # Use the surrogate to evaluate all individuals
-        fitness_scores = self.surrogate.evaluate_population(self.population, base_log_filename=base_log_filename)
+        fitness_scores = self.surrogate.evaluate_population(eval_population, seed=seed, base_log_filename=base_log_filename)
         
         # Update best individual if needed
-        for i, individual in enumerate(self.population):
+        for individual in eval_population:
             if individual.fitness > self.best_fitness:
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()

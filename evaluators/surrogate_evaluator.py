@@ -8,24 +8,22 @@ class SurrEvaluator:
     """
     Evaluator class to run neural architecture search experiments.
     
-    This class takes a surrogate model and dataset, then runs an 
-    evolutionary optimizer to find optimal neural architectures.
+    This class takes a surrogate model and dataset, then evaluates a fixed
+    population of neural architectures across multiple seeds.
     """
     
-    def __init__(self, optimizer, max_evaluations=100, log_interval=10, num_runs=1, seeds=None):
+    def __init__(self, optimizer, num_runs=5, log_interval=1, seeds=None):
         """
         Initialize the evaluator.
         
         Args:
             optimizer: An evolutionary algorithm optimizer
-            max_evaluations: Maximum number of evaluations to perform
-            log_interval: How often to log progress
             num_runs: Number of runs with different seeds to perform
+            log_interval: How often to log progress
             seeds: List of seeds to use for runs (generated if None)
         """
         self.optimizer = optimizer
         self.surrogate = optimizer.surrogate
-        self.max_evaluations = max_evaluations
         self.log_interval = log_interval
         self.num_runs = num_runs
         
@@ -42,13 +40,13 @@ class SurrEvaluator:
         # Metrics tracking
         self.best_fitness = float('-inf')  # Higher is better
         self.best_individual = None
-        self.fitness_history = []
-        self.best_fitness_history = []
-        self.evaluation_count = 0
-        self.start_time = None
         
-        # Results across multiple runs
+        # Results across all runs
         self.run_results = []
+        
+        # Generate population once to reuse across runs
+        self.configure_optimizer()
+        self.population = None  # Will be generated in the first run
         
     def configure_optimizer(self):
         """Configure the optimizer with dataset parameters"""
@@ -56,37 +54,14 @@ class SurrEvaluator:
             self.optimizer.input_shape = self.input_shape
         if not hasattr(self.optimizer, 'output_dim'):
             self.optimizer.output_dim = self.output_dim
-            
-    def evaluate_individual(self, individual):
-        """Evaluate a single individual using the surrogate model"""
-        fitness = self.surrogate.evaluate(individual)
-        self.evaluation_count += 1
-        
-        # Track best individual
-        if fitness > self.best_fitness:
-            self.best_fitness = fitness
-            self.best_individual = individual.copy()
-            
-        self.fitness_history.append(fitness)
-        self.best_fitness_history.append(self.best_fitness)
-        
-        # Log progress
-        if self.evaluation_count % self.log_interval == 0:
-            elapsed = time.time() - self.start_time
-            perplexity = -self.best_fitness  # Convert fitness back to perplexity
-            print(f"Eval: {self.evaluation_count}/{self.max_evaluations} | "
-                  f"Best Perplexity: {perplexity:.2f} | "
-                  f"Time: {elapsed:.1f}s")
-            
-        return fitness
     
-    def run_single_evaluation(self, run_index, seed):
+    def run_single_run(self, run_index, seed):
         """
         Run a single evaluation with a specific seed.
         
         Args:
             run_index: Index of the current run
-            seed: Seed for weight initialization and population generation
+            seed: Seed for weight initialization
             
         Returns:
             dict: Results of this run
@@ -112,13 +87,35 @@ class SurrEvaluator:
             timestamp=timestamp
         )
         
-        # Create population with seed
-        self.optimizer.surrogate = new_surrogate  # Point optimizer to new surrogate
-        population = self.optimizer.generate_population(seed=seed)
+        # Point optimizer to new surrogate
+        self.optimizer.surrogate = new_surrogate
         
-        # Evaluate population
+        # Generate population only on first run, then reuse it
+        if self.population is None:
+            print("Generating initial population (will be reused across all runs)")
+            self.population = self.optimizer.generate_population(seed=42)
+        else:
+            print("Reusing initial population from first run")
+            
+        # Set the seed for weight initialization
         start_time = time.time()
-        fitness_scores = self.optimizer.evaluate_only(seed=seed, base_log_filename=run_name)
+        
+        # Deep copy the population to avoid modifying the original
+        population_copy = []
+        for individual in self.population:
+            population_copy.append(individual.copy())
+            
+        # Evaluate population with seed affecting only weights
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
+        
+        print(f"Training all individuals with seed {seed} for {self.surrogate.num_epochs} epochs")
+        fitness_scores = self.optimizer.evaluate_only(
+            population=population_copy,
+            seed=seed, 
+            base_log_filename=run_name
+        )
+        
         elapsed = time.time() - start_time
         
         # Get best individual from this run
@@ -148,13 +145,14 @@ class SurrEvaluator:
         print(f"Surrogate model: {self.surrogate.__class__.__name__}")
         print(f"Number of runs: {self.num_runs} with seeds {self.seeds}")
         print(f"Training epochs per model: {self.surrogate.num_epochs}")
+        print(f"Using the same population across all runs, only the neural network weights change")
         
-        self.start_time = time.time()
+        start_time = time.time()
         self.configure_optimizer()
         
         # Run evaluations for each seed
         for i, seed in enumerate(self.seeds):
-            run_result = self.run_single_evaluation(i, seed)
+            run_result = self.run_single_run(i, seed)
             self.run_results.append(run_result)
             
             # Update overall best if this run is better
@@ -163,7 +161,7 @@ class SurrEvaluator:
                 self.best_individual = run_result['best_individual']
         
         # Report final results across all runs
-        total_elapsed = time.time() - self.start_time
+        total_elapsed = time.time() - start_time
         best_perplexity = -self.best_fitness
         avg_perplexity = np.mean([result['best_perplexity'] for result in self.run_results])
         std_perplexity = np.std([result['best_perplexity'] for result in self.run_results])
@@ -173,19 +171,6 @@ class SurrEvaluator:
         print(f"Average validation perplexity: {avg_perplexity:.2f} ± {std_perplexity:.2f}")
         print(f"Best validation perplexity: {best_perplexity:.2f}")
         print(f"Total time: {total_elapsed:.1f}s")
-        print(f"Best architecture: {self.best_individual.__dict__ if self.best_individual else None}")
+        print(f"Best architecture: {self.best_individual}")
         
         return self.best_individual
-    
-    def evaluate_population(self, population):
-        """Evaluate an entire population using the surrogate model"""
-        fitnesses = []
-        for individual in population:
-            # Respect evaluation limit
-            if self.evaluation_count >= self.max_evaluations:
-                break
-                
-            fitness = self.evaluate_individual(individual)
-            fitnesses.append(fitness)
-            
-        return fitnesses
