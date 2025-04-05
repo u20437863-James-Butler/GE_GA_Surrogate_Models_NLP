@@ -1,15 +1,56 @@
-from datasets.ptb import get_ptb_dataset
-from datasets.wt2 import get_wt2_dataset
-# from datasets.wt103 import *
-from surrogates.mintrain import MinTrainSurrogate
-# from surrogates.full_train import FullTrainSurrogate
-# from surrogates.random_forest import RandomForestSurrogate
-from optimizers.ga import GeneticAlgorithm
-# from optimizers.ge import GrammaticalEvolution
-# from optimizers.ga_cell import CellBasedGeneticAlgorithm
-# from optimizers.ge_cell import CellBasedGrammaticalEvolution
-# from evaluators.evaluate import Evaluator, run_experiment
-from evaluators.surrogate_evaluator import SurrEvaluator
+import os
+import sys
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# For datasets imports
+try:
+    from datasets.ptb import get_ptb_dataset
+    from datasets.wt2 import get_wt2_dataset
+    # from datasets.wt103 import *
+except ImportError:
+    print("Could not import datasets directly. Trying alternative import method...")
+    # Alternative import if datasets is not a proper package
+    sys.path.append(os.path.join(parent_dir, 'datasets'))
+    from ptb import get_ptb_dataset
+    from wt2 import get_wt2_dataset
+    # from wt103 import *
+
+# For surrogates imports
+try:
+    from surrogates.mintrain import MinTrainSurrogate
+    # from surrogates.full_train import FullTrainSurrogate
+    from surrogates.random_forest import RandomForestSurrogate
+except ImportError:
+    print("Could not import surrogates directly. Trying alternative import method...")
+    sys.path.append(os.path.join(parent_dir, 'surrogates'))
+    from mintrain import MinTrainSurrogate
+    # from full_train import FullTrainSurrogate
+    # from random_forest import RandomForestSurrogate
+
+# For optimizers imports
+try:
+    from optimizers.ga import GeneticAlgorithm
+    # from optimizers.ge import GrammaticalEvolution
+    # from optimizers.ga_cell import CellBasedGeneticAlgorithm
+    # from optimizers.ge_cell import CellBasedGrammaticalEvolution
+except ImportError:
+    print("Could not import optimizers directly. Trying alternative import method...")
+    sys.path.append(os.path.join(parent_dir, 'optimizers'))
+    from ga import GeneticAlgorithm
+    # from ge import GrammaticalEvolution
+    # from ga_cell import CellBasedGeneticAlgorithm
+    # from ge_cell import CellBasedGrammaticalEvolution
+
+# For evaluators imports
+try:
+    # from evaluators.evaluate import Evaluator, run_experiment
+    from evaluators.surrogate_evaluator import SurrEvaluator
+except ImportError:
+    print("Could not import evaluators directly. Trying alternative import method...")
+    sys.path.append(os.path.join(parent_dir, 'evaluators'))
+    # from evaluate import Evaluator, run_experiment
+    from surrogate_evaluator import SurrEvaluator
 
 supported_datasets = {
     'ptb': get_ptb_dataset(seq_length=35, batch_size=20),
