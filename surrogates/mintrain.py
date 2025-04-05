@@ -86,7 +86,7 @@ class MinTrainSurrogate:
             np.random.seed(seed)
 
         # Create callback with the seed information
-        logger_callback = self.logger.create_epoch_callback(individual_id, seed=seed, log_filename=log_filename)
+        logger_callback = self.logger.create_epoch_callback(individual_id, seed=seed, log_filename=log_filename, architecture=individual.getIdLong())
         
         # Build model from individual
         model = individual.build_model(self.input_shape, self.output_dim)
