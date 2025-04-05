@@ -52,17 +52,18 @@ class MinTrainLogger:
                 'training_time'
             ])
     
-    def create_epoch_callback(self, individual_id, seed=None, log_filename=None):
+    def create_epoch_callback(self, individual_id, seed=None, log_filename=None, architecture=None):
         """
         Create a Keras callback to log metrics after each epoch.
         
         Args:
-            individual_id: ID of the individual being trained
-            seed: Optional seed used for weight initialization
-            log_filename: Optional CSV filename. If None, uses timestamp
+            individual_id: ID of the individual being trained.
+            seed: Optional seed used for weight initialization.
+            log_filename: Optional CSV filename. If None, uses timestamp.
+            architecture: A string representing the model architecture, typically from individual.getIdLong().
             
         Returns:
-            tf.keras.callbacks.Callback: Callback for logging metrics
+            tf.keras.callbacks.Callback: Callback for logging metrics.
         """
         # Create filename if not provided
         if log_filename is None:
@@ -76,7 +77,7 @@ class MinTrainLogger:
         # Full path to log file
         log_path = os.path.join(self.log_dir, log_filename)
         
-        # Create CSV file with headers
+        # Create CSV file with headers (added 'architecture' column)
         with open(log_path, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow([
@@ -86,12 +87,13 @@ class MinTrainLogger:
                 'train_loss', 
                 'val_loss', 
                 'perplexity', 
-                'time_elapsed'
+                'time_elapsed',
+                'architecture'
             ])
         
         # Create custom callback for logging
         class PerplexityLogger(tf.keras.callbacks.Callback):
-            def __init__(self, log_path, individual_id, seed, summary_file):
+            def __init__(self, log_path, individual_id, seed, summary_file, architecture):
                 super().__init__()
                 self.log_path = log_path
                 self.individual_id = individual_id
@@ -100,28 +102,29 @@ class MinTrainLogger:
                 self.summary_file = summary_file
                 self.best_perplexity = float('inf')
                 self.best_epoch = 0
-                
+                self.architecture = architecture
+                    
             def on_train_begin(self, logs=None):
                 self.start_time = time.time()
-                
+                    
             def on_epoch_end(self, epoch, logs=None):
                 logs = logs or {}
                 train_loss = logs.get('loss', None)
                 val_loss = logs.get('val_loss', None)
                 time_elapsed = time.time() - self.start_time
-                
+                    
                 # Calculate perplexity from validation loss
                 if val_loss is not None:
                     perplexity = np.exp(val_loss)
                 else:
                     perplexity = None
-                    
+                        
                 # Track best perplexity
                 if perplexity is not None and perplexity < self.best_perplexity:
                     self.best_perplexity = perplexity
                     self.best_epoch = epoch + 1
-                
-                # Append to CSV
+                    
+                # Append to CSV including the architecture column
                 with open(self.log_path, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerow([
@@ -131,23 +134,24 @@ class MinTrainLogger:
                         train_loss,
                         val_loss,
                         perplexity,
-                        time_elapsed
+                        time_elapsed,
+                        self.architecture
                     ])
-                    
+                        
             def on_train_end(self, logs=None):
                 logs = logs or {}
                 training_time = time.time() - self.start_time
-                
+                    
                 # Get final metrics
                 final_train_loss = logs.get('loss', None)
                 final_val_loss = logs.get('val_loss', None)
-                
+                    
                 # Calculate final perplexity
                 if final_val_loss is not None:
                     final_perplexity = np.exp(final_val_loss)
                 else:
                     final_perplexity = None
-                
+                    
                 # Add to summary file
                 with open(self.summary_file, 'a', newline='') as file:
                     writer = csv.writer(file)
@@ -163,7 +167,8 @@ class MinTrainLogger:
                         training_time
                     ])
                     
-        return PerplexityLogger(log_path, individual_id, seed, self.summary_file)
+        return PerplexityLogger(log_path, individual_id, seed, self.summary_file, architecture)
+
     
     def log_final_result(self, individual_id, perplexity, training_time, architecture_summary, seed=None, log_filename=None):
         """
