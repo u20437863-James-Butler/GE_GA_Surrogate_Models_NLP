@@ -67,23 +67,27 @@ class Individual:
         
         model = keras.Sequential()
         
-        # Add the input layer
-        if self.layer_counts > 0:
-            rnn_layer = getattr(layers, self.rnn_types[0])
-            model.add(rnn_layer(
-                self.units[0], 
-                activation=self.activations[0], 
-                return_sequences=self.return_sequences[0], 
-                input_shape=input_shape
-            ))
+        # Add embedding layer to convert token indices to dense vectors
+        embedding_dim = 50  # You can adjust this embedding dimension
+        model.add(layers.Embedding(output_dim, embedding_dim, input_length=input_shape[0]))
         
-        # Add the hidden layers
-        for i in range(1, self.layer_counts):
+        # Add the RNN layers
+        for i in range(self.layer_counts):
             rnn_layer = getattr(layers, self.rnn_types[i])
+            
+            # For all but the last RNN layer, we can use return_sequences as defined
+            # But for the last RNN layer, we must ensure return_sequences is False
+            if i < self.layer_counts - 1:
+                return_seq = self.return_sequences[i]
+            else:
+                # Force the last RNN layer to have return_sequences=False
+                # This ensures we only get the final output for sequence prediction
+                return_seq = False
+                
             model.add(rnn_layer(
                 self.units[i], 
                 activation=self.activations[i], 
-                return_sequences=self.return_sequences[i]
+                return_sequences=return_seq
             ))
         
         # Add dropout and output layer
