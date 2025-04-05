@@ -62,7 +62,7 @@ dataset = supported_datasets[dataset_name]
 
 supported_surrogates = {
     # 'base': FullTrainSurrogate(dataset, max_epochs=50, batch_size=128, patience=5, verbose=1),
-    'mt': MinTrainSurrogate(dataset, dataset_name=dataset_name, num_epochs=2, batch_size=128, verbose=1),
+    'mt': MinTrainSurrogate(dataset, dataset_name=dataset_name, num_epochs=2, batch_size=256, verbose=1),
     # 'rf': RandomForestSurrogate(dataset, initial_models=30, train_epochs=5, retrain_interval=20, verbose=1),
 }
 
