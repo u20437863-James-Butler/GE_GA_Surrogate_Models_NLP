@@ -118,10 +118,18 @@ class SurrEvaluator:
         
         elapsed = time.time() - start_time
         
-        # Get best individual from this run
-        best_individual = self.optimizer.best_individual
-        best_fitness = best_individual.fitness if best_individual else float('-inf')
+
+        # Get best individual from this run by finding the index with the highest fitness score
+        best_index = np.argmax(fitness_scores) if fitness_scores else None
+        if best_index is not None:
+            best_individual = population_copy[best_index]
+            best_fitness = fitness_scores[best_index]
+        else:
+            best_individual = None
+            best_fitness = float('-inf')
+
         best_perplexity = -best_fitness
+
         
         print(f"Run {run_index+1} complete in {elapsed:.1f}s")
         print(f"Best Perplexity: {best_perplexity:.2f}")
