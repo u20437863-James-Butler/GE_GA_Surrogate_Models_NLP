@@ -13,9 +13,13 @@ class PTBDataset:
     def __init__(self, seq_length=35, batch_size=20):
         self.seq_length = seq_length
         self.batch_size = batch_size
-        self.data_dir = Path("ptb_data")
+        self.data_dir = Path("datasets/ptb_data")
         self.tokenizer = None
         self.vocab_size = 0
+        
+        # Create datasets directory if it doesn't exist
+        Path("datasets").mkdir(exist_ok=True)
+        self.data_dir.mkdir(exist_ok=True, parents=True)
         
         # Load and prepare data
         self.download_and_extract()
@@ -29,27 +33,38 @@ class PTBDataset:
 
     def download_and_extract(self):
         """Download and extract PTB dataset if not already available"""
-        if not self.data_dir.exists():
-            print("Downloading Penn TreeBank dataset...")
-            url = "https://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz"
-            response = requests.get(url)
+        # Check if data files already exist
+        required_files = [self.data_dir / f"ptb.{split}.txt" for split in ["train", "valid", "test"]]
+        
+        if all(file.exists() for file in required_files):
+            print("PTB dataset files already exist. Skipping download.")
+            return
             
-            # Extract files
-            tar = tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz")
-            tar.extractall()
-            tar.close()
+        print("Downloading Penn TreeBank dataset...")
+        url = "https://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz"
+        response = requests.get(url)
+        
+        # Extract files
+        tar = tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz")
+        tar.extractall()
+        tar.close()
+        
+        # Move relevant files
+        source_dir = Path("simple-examples/data")
+        for split in ["train", "valid", "test"]:
+            source_file = source_dir / f"ptb.{split}.txt"
+            target_file = self.data_dir / f"ptb.{split}.txt"
+            if source_file.exists():
+                with open(source_file, 'r', encoding='utf-8') as src, \
+                     open(target_file, 'w', encoding='utf-8') as tgt:
+                    tgt.write(src.read())
+        
+        # Clean up extracted files
+        import shutil
+        if Path("simple-examples").exists():
+            shutil.rmtree("simple-examples")
             
-            # Move relevant files
-            self.data_dir.mkdir(exist_ok=True)
-            source_dir = Path("simple-examples/data")
-            for split in ["train", "valid", "test"]:
-                source_file = source_dir / f"ptb.{split}.txt"
-                target_file = self.data_dir / f"ptb.{split}.txt"
-                if source_file.exists():
-                    with open(source_file, 'r', encoding='utf-8') as src, \
-                         open(target_file, 'w', encoding='utf-8') as tgt:
-                        tgt.write(src.read())
-            print("Download and extraction complete.")
+        print("Download and extraction complete.")
     
     def load_and_prepare_data(self, split):
         """Load and prepare data for the specified split"""
