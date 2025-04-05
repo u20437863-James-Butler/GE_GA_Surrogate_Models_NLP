@@ -1,13 +1,19 @@
 import tensorflow as tf
 import numpy as np
 import time
+import os
+import sys
+
+# Add parent directory to path to make imports work properly
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logs.minTrainLogger import MinTrainLogger
 
 class MinTrainSurrogate:
     """
     Surrogate model that trains an RNN architecture for a limited number of epochs.
     Used as a faster fitness approximation in evolutionary algorithms for Neural Architecture Search.
     """
-    def __init__(self, dataset, num_epochs=5, batch_size=128, verbose=0):
+    def __init__(self, dataset, num_epochs=5, batch_size=128, verbose=0, dataset_name="default"):
         """
         Initialize the minimum training surrogate model.
         
@@ -16,24 +22,27 @@ class MinTrainSurrogate:
             num_epochs: Fixed number of epochs to train each model
             batch_size: Batch size for training
             verbose: Verbosity level for training (0: silent, 1: progress bar, 2: one line per epoch)
+            dataset_name: Name of the dataset being used, included in log directory name
         """
-        self.dataset = dataset
         self.num_epochs = num_epochs
         self.batch_size = batch_size
         self.verbose = verbose
+        self.dataset_name = dataset_name
         
-        # Load dataset
-        self.train_data = dataset.get_train_data()
-        self.valid_data = dataset.get_valid_data()
-        self.test_data = dataset.get_test_data()
+        # Unpack the dataset tuple
+        self.x_train, self.y_train, self.x_val, self.y_val, self.x_test, self.y_test, self.input_shape, self.output_dim = dataset
         
-        # Get input shape and output dimension from dataset
-        self.input_shape = dataset.get_input_shape()
-        self.output_dim = dataset.get_output_dim()
+        # Prepare data tuples for easy access
+        self.train_data = (self.x_train, self.y_train)
+        self.valid_data = (self.x_val, self.y_val)
+        self.test_data = (self.x_test, self.y_test)
         
         # Metrics to track
         self.best_perplexity = float('inf')
         self.best_individual = None
+        
+        # Initialize logger with dataset name
+        self.logger = MinTrainLogger(dataset_name=dataset_name)  
     
     def calculate_perplexity(self, model, data):
         """Calculate perplexity from model predictions"""
@@ -41,7 +50,7 @@ class MinTrainSurrogate:
         loss = model.evaluate(x, y, verbose=0)[0]
         return np.exp(loss)
     
-    def evaluate(self, individual):
+    def evaluate(self, individual, log_filename=None):
         """
         Train the individual's model for a fixed number of epochs and return fitness.
         
@@ -52,6 +61,12 @@ class MinTrainSurrogate:
             float: Fitness score (negative perplexity, higher is better)
         """
         start_time = time.time()
+
+        # Get individual ID
+        individual_id = individual.getId() if hasattr(individual, 'getId') else str(id(individual))
+
+        # Create callback
+        logger_callback = self.logger.create_epoch_callback(individual_id, log_filename)
         
         # Build model from individual
         model = individual.build_model(self.input_shape, self.output_dim)
@@ -62,7 +77,8 @@ class MinTrainSurrogate:
             epochs=self.num_epochs,
             batch_size=self.batch_size,
             validation_data=self.valid_data,
-            verbose=self.verbose
+            verbose=self.verbose,
+            callbacks=[logger_callback]
         )
         
         # Calculate validation perplexity (lower is better)
@@ -75,6 +91,16 @@ class MinTrainSurrogate:
             
         # Training time
         training_time = time.time() - start_time
+
+        # Log final results
+        architecture_summary = str(individual)
+        self.logger.log_final_result(
+            individual_id, 
+            val_perplexity, 
+            training_time, 
+            architecture_summary, 
+            log_filename
+        )
         
         # Set fitness score (negative perplexity, so higher is better)
         fitness = -val_perplexity
@@ -87,7 +113,7 @@ class MinTrainSurrogate:
         
         return fitness
     
-    def evaluate_population(self, population):
+    def evaluate_population(self, population, base_log_filename=None):
         """
         Evaluate a population of individuals.
         
@@ -97,8 +123,24 @@ class MinTrainSurrogate:
         Returns:
             list: List of fitness scores
         """
-        return [self.evaluate(individual) for individual in population]
+        fitness_scores = []
+        
+        for i, individual in enumerate(population):
+            # Create individual log filename if base provided
+            if base_log_filename:
+                log_filename = f"{base_log_filename}_individual_{i}.csv"
+            else:
+                log_filename = None
+                
+            fitness = self.evaluate(individual, log_filename)
+            fitness_scores.append(fitness)
+            
+        return fitness_scores
     
     def get_best_individual(self):
         """Return the best individual found so far"""
         return self.best_individual
+    
+    def get_best_perplexity(self):
+        "Return the best perplexity found so far"
+        return self.best_perplexity

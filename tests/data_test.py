@@ -6,7 +6,7 @@ import time
 # Add the parent directory to path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
-
+# print(sys.path)
 # Import the dataset functions from the datasets directory
 try:
     from datasets.ptb import get_ptb_dataset

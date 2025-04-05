@@ -124,3 +124,7 @@ class FullTrainSurrogate:
     def get_best_individual(self):
         """Return the best individual found so far"""
         return self.best_individual
+    
+    def get_best_perplexity(self):
+        "Return the best perplexity found so far"
+        return self.best_perplexity
