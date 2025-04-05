@@ -12,7 +12,7 @@ class SurrEvaluator:
     population of neural architectures across multiple seeds.
     """
     
-    def __init__(self, optimizer, num_runs=5, log_interval=1, seeds=None):
+    def __init__(self, optimizer, num_runs=5, log_interval=1, seeds=None, starter_seed=42):
         """
         Initialize the evaluator.
         
@@ -29,7 +29,7 @@ class SurrEvaluator:
         
         # Set up seeds for multiple runs
         if seeds is None:
-            self.seeds = [42 + i for i in range(num_runs)]
+            self.seeds = [starter_seed + i for i in range(num_runs)]
         else:
             self.seeds = seeds[:num_runs]  # Use provided seeds
             
