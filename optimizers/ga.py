@@ -30,7 +30,52 @@ class GeneticAlgorithm:
         # Get input shape and output dim from surrogate
         self.input_shape = surrogate.input_shape
         self.output_dim = surrogate.output_dim
+    
+    def generate_population(self, seed=None):
+        """
+        Generate a new population with an optional seed for reproducibility.
         
+        Args:
+            seed: Random seed for population generation
+            
+        Returns:
+            list: New population of individuals
+        """
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+            
+        self.population = [Individual() for _ in range(self.pop_size)]
+        return self.population
+        
+    def evaluate_only(self, seed=None, base_log_filename=None):
+        """
+        Evaluate the population without evolving it.
+        Useful for evaluating initial populations or for benchmarking.
+        
+        Args:
+            seed: Optional seed for weight initialization
+            base_log_filename: Base filename for logging
+            
+        Returns:
+            list: List of fitness scores
+        """
+        if seed is not None:
+            # Regenerate individuals with provided seed for consistent weight initialization
+            for individual in self.population:
+                individual.seed = seed
+        
+        # Use the surrogate to evaluate all individuals
+        fitness_scores = self.surrogate.evaluate_population(self.population, base_log_filename=base_log_filename)
+        
+        # Update best individual if needed
+        for i, individual in enumerate(self.population):
+            if individual.fitness > self.best_fitness:
+                self.best_fitness = individual.fitness
+                self.best_individual = individual.copy()
+                
+        return fitness_scores
+    
     def evaluate_population(self):
         """
         Evaluate the entire population using the surrogate model.

@@ -3,6 +3,7 @@ import numpy as np
 import time
 import os
 import sys
+from datetime import datetime
 
 # Add parent directory to path to make imports work properly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,7 +14,7 @@ class MinTrainSurrogate:
     Surrogate model that trains an RNN architecture for a limited number of epochs.
     Used as a faster fitness approximation in evolutionary algorithms for Neural Architecture Search.
     """
-    def __init__(self, dataset, num_epochs=5, batch_size=128, verbose=0, dataset_name="default"):
+    def __init__(self, dataset, num_epochs=5, batch_size=128, verbose=0, dataset_name="default", timestamp=None):
         """
         Initialize the minimum training surrogate model.
         
@@ -22,12 +23,18 @@ class MinTrainSurrogate:
             num_epochs: Fixed number of epochs to train each model
             batch_size: Batch size for training
             verbose: Verbosity level for training (0: silent, 1: progress bar, 2: one line per epoch)
-            dataset_name: Name of the dataset being used, included in log directory name
+            dataset_name: Name of the dataset being used
+            timestamp: Optional timestamp to use for log directory naming
         """
         self.num_epochs = num_epochs
         self.batch_size = batch_size
         self.verbose = verbose
         self.dataset_name = dataset_name
+        
+        # Generate timestamp if not provided
+        if timestamp is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.timestamp = timestamp
         
         # Unpack the dataset tuple
         self.x_train, self.y_train, self.x_val, self.y_val, self.x_test, self.y_test, self.input_shape, self.output_dim = dataset
@@ -41,8 +48,8 @@ class MinTrainSurrogate:
         self.best_perplexity = float('inf')
         self.best_individual = None
         
-        # Initialize logger with dataset name
-        self.logger = MinTrainLogger(dataset_name=dataset_name)  
+        # Initialize logger with dataset name and timestamp
+        self.logger = MinTrainLogger(dataset_name=f"{dataset_name}_{timestamp}")
     
     def calculate_perplexity(self, model, data):
         """Calculate perplexity from model predictions"""
