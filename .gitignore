@@ -6,3 +6,5 @@ logs/*
 !logs/__init__.py
 !logs/minTrainLogger.py
 mintrain_logs*/
+datasets/ptb_data
+datasets/wikitext2
