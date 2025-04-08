@@ -9,7 +9,7 @@ class GeneticAlgorithm(Optimizer):
         Initialize the Genetic Algorithm with a surrogate model for fitness evaluation.
         
         Args:
-            surrogate: MinTrainSurrogate instance for model evaluation
+            surrogate: Surrogate instance for model evaluation
             pop_size: Size of the population
             generations: Number of generations to evolve
             mutation_rate: Probability of mutation for each gene

@@ -1,17 +1,37 @@
 import random
 import numpy as np
+from tensorflow import keras
 from keras import Sequential, layers
+from optimizers.optimizer import Optimizer
+from optimizers.ge_individual import GE_Individual
 
-class GrammaticalEvolution:
-    def __init__(self, pop_size, generations, mutation_rate, crossover_rate, max_genotype_length):
+class GrammaticalEvolution(Optimizer):
+    def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, max_genotype_length=8):
+        """
+        Initialize the Grammatical Evolution with a surrogate model for fitness evaluation.
+        
+        Args:
+            surrogate: Surrogate instance for model evaluation
+            pop_size: Size of the population
+            generations: Number of generations to evolve
+            mutation_rate: Probability of mutation for each gene
+            crossover_rate: Probability of crossover between parents
+        """
+        self.surrogate = surrogate
         self.pop_size = pop_size
         self.generations = generations
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.max_genotype_length = max_genotype_length  # Max number of production rules in genotype
+
+        self.population = self.initialize_population()
+
+        # Track best individual and fitness
+        self.best_individual = None
+        self.best_fitness = float('-inf')  # Higher fitness is better
+
         self.grammar = {
             '<rnn-model>': ["Sequential([<rnn-layers>, <dense-layer>])"],
-            '<rnn-layers>': ["<rnn-layer>", "<rnn-layer>, <rnn-layers>"],
+            '<rnn-layers>': ["<rnn-layer>", "<rnn-layer>, <rnn-layer>", "<rnn-layer>, <rnn-layer>, <rnn-layer>"],
             '<rnn-layer>': ["layers.<rnn-type>(<units>, activation='<activation>', return_sequences=<return-seq>)"],
             '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
             '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
@@ -20,49 +40,84 @@ class GrammaticalEvolution:
             '<dense-layer>': ["layers.Dense(<output-dim>, activation='softmax')"],
             '<output-dim>': [str(u) for u in range(10, 101, 10)]  # Output dim between 10 and 100
         }
-        self.population = self.initialize_population()
-        self.depth_limit = _
 
-    def initialize_population(self):
-        """
-        Initializes the population with random genotypes (lists of integers).
-        Each integer maps to a production rule in the grammar.
-        """
-        return [
-            [random.randint(0, len(self.grammar[key]) - 1) for key in self.grammar]
-            for _ in range(self.pop_size)
-        ]
+        # Get input shape and output dim from surrogate
+        self.input_shape = surrogate.input_shape
+        self.output_dim = surrogate.output_dim
 
-    def genotype_to_phenotype(self, genotype):
+    def generate_population(self, seed=None):
         """
-        Converts a genotype (list of integers) into a phenotype (valid RNN architecture code).
+        Generate a new population with an optional seed for reproducibility.
+        
+        Args:
+            seed: Random seed for population generation
+            
+        Returns:
+            list: New population of individuals
         """
-        return self.expand('<rnn-model>', genotype, 0)
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+            
+        self.population = [GE_Individual() for _ in range(self.pop_size)]
+        return self.population
+    
+    def evaluate_only(self, population=None, seed=None, base_log_filename=None):
+        """
+        Evaluate the population without evolving it.
+        Useful for evaluating initial populations or for benchmarking.
+        
+        Args:
+            population: Optional pre-generated population to evaluate
+            seed: Optional seed for weight initialization
+            base_log_filename: Base filename for logging
+            
+        Returns:
+            list: List of fitness scores
+        """
+        # Use provided population if given, otherwise use the existing one
+        eval_population = population if population is not None else self.population
+        
+        if seed is not None:
+            # Update seeds for consistent weight initialization
+            for individual in eval_population:
+                individual.seed = seed
+        
+        # Use the surrogate to evaluate all individuals
+        fitness_scores = self.surrogate.evaluate_population(eval_population, seed=seed, base_log_filename=base_log_filename)
+        
+        # Update best individual if needed
+        for individual in eval_population:
+            if individual.fitness > self.best_fitness:
+                self.best_fitness = individual.fitness
+                self.best_individual = individual.copy()
+                
+        return fitness_scores
 
-    def expand(self, non_terminal, genotype, index):
+    def evaluate_population(self):
         """
-        Expands a non-terminal using the genotype and the grammar rules.
+        Evaluate the entire population using the surrogate model.
         """
-        if non_terminal not in self.grammar:
-            return non_terminal
-        rule_index = genotype[index % len(genotype)] % len(self.grammar[non_terminal])
-        rule = self.grammar[non_terminal][rule_index]
-        production = []
-        for symbol in rule.split():
-            if symbol.startswith('<'):  # Non-terminal
-                production.append(self.expand(symbol, genotype, index + 1))
-            else:  # Terminal
-                production.append(symbol)
-        return ' '.join(production)
+        # Use the surrogate to evaluate all individuals
+        log_filename = f"generation_{self.current_generation}"
+        fitness_scores = self.surrogate.evaluate_population(self.population, base_log_filename=log_filename)
+        
+        # Update best individual if needed
+        for i, individual in enumerate(self.population):
+            if individual.fitness > self.best_fitness:
+                self.best_fitness = individual.fitness
+                self.best_individual = individual.copy()
+                
+        return fitness_scores
 
-    def mutate(self, genotype):
+    def select_parents(self):
         """
-        Mutates a genotype by changing one random aspect.
+        Tournament selection - select the best individual from a random sample.
         """
-        if random.random() < self.mutation_rate:
-            idx = random.randint(0, len(genotype) - 1)
-            genotype[idx] = random.randint(0, 255)
-
+        tournament_size = max(2, self.pop_size // 5)  # Adjust tournament size based on population
+        tournament = random.sample(self.population, tournament_size)
+        return max(tournament, key=lambda ind: ind.fitness)
+    
     def crossover(self, parent1, parent2):
         """
         Performs crossover between two parent genotypes.
@@ -71,42 +126,14 @@ class GrammaticalEvolution:
             point = random.randint(1, len(parent1) - 1)
             return parent1[:point] + parent2[point:]
         return parent1
-
-    def evaluate_population(self, x_train, y_train, x_val, y_val, epochs=5):
+    
+    def mutate(self, genotype):
         """
-        Evaluates the entire population by generating models, training them, and computing fitness.
+        Mutates a genotype by changing one random aspect.
         """
-        fitness_scores = []
-        for genotype in self.population:
-            model_code = self.genotype_to_phenotype(genotype)
-            model = self.build_model_from_code(model_code)
-            if model is None:
-                fitness_scores.append(float('inf'))
-                continue
-            model.fit(x_train, y_train, epochs=epochs, verbose=0, validation_data=(x_val, y_val))
-            _, accuracy = model.evaluate(x_val, y_val, verbose=0)
-            fitness_scores.append(1 - accuracy)  # Minimizing error
-        return fitness_scores
-
-    def build_model_from_code(self, model_code):
-        """
-        Executes the generated model code and returns a compiled Keras model.
-        """
-        try:
-            local_vars = {}
-            exec(f"from tensorflow.keras import Sequential, layers\nmodel = {model_code}", {}, local_vars)
-            model = local_vars.get("model")
-            model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-            return model
-        except Exception:
-            return None
-
-    def select_parents(self, fitness_scores):
-        """
-        Selects parents using tournament selection.
-        """
-        candidates = random.sample(range(self.pop_size), 2)
-        return min(candidates, key=lambda i: fitness_scores[i])
+        if random.random() < self.mutation_rate:
+            idx = random.randint(0, len(genotype) - 1)
+            genotype[idx] = random.randint(0, 255)
 
     def evolve(self, x_train, y_train, x_val, y_val):
         """
@@ -124,3 +151,38 @@ class GrammaticalEvolution:
             self.population = new_population
         best_index = min(range(self.pop_size), key=lambda i: fitness_scores[i])
         return self.genotype_to_phenotype(self.population[best_index])
+
+    # def genotype_to_phenotype(self, genotype):
+    #     """
+    #     Converts a genotype (list of integers) into a phenotype (valid RNN architecture code).
+    #     """
+    #     return self.expand('<rnn-model>', genotype, 0)
+
+    # def expand(self, non_terminal, genotype, index):
+    #     """
+    #     Expands a non-terminal using the genotype and the grammar rules.
+    #     """
+    #     if non_terminal not in self.grammar:
+    #         return non_terminal
+    #     rule_index = genotype[index % len(genotype)] % len(self.grammar[non_terminal])
+    #     rule = self.grammar[non_terminal][rule_index]
+    #     production = []
+    #     for symbol in rule.split():
+    #         if symbol.startswith('<'):  # Non-terminal
+    #             production.append(self.expand(symbol, genotype, index + 1))
+    #         else:  # Terminal
+    #             production.append(symbol)
+    #     return ' '.join(production)
+    
+    # def build_model_from_code(self, model_code):
+    #     """
+    #     Executes the generated model code and returns a compiled Keras model.
+    #     """
+    #     try:
+    #         local_vars = {}
+    #         exec(f"from tensorflow.keras import Sequential, layers\nmodel = {model_code}", {}, local_vars)
+    #         model = local_vars.get("model")
+    #         model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    #         return model
+    #     except Exception:
+    #         return None
