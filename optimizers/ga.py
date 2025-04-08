@@ -1,8 +1,9 @@
 import random
 import numpy as np
-from optimizers.GA_Individual import Individual
+from optimizers.optimizer import Optimizer
+from optimizers.ga_individual import GA_Individual
 
-class GeneticAlgorithm:
+class GeneticAlgorithm(Optimizer):
     def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7):
         """
         Initialize the Genetic Algorithm with a surrogate model for fitness evaluation.
@@ -21,7 +22,7 @@ class GeneticAlgorithm:
         self.crossover_rate = crossover_rate
         
         # Generate random initial population
-        self.population = [Individual() for _ in range(pop_size)]
+        self.population = [GA_Individual() for _ in range(pop_size)]
         
         # Track best individual and fitness
         self.best_individual = None
@@ -45,7 +46,7 @@ class GeneticAlgorithm:
             random.seed(seed)
             np.random.seed(seed)
             
-        self.population = [Individual() for _ in range(self.pop_size)]
+        self.population = [GA_Individual() for _ in range(self.pop_size)]
         return self.population
         
     def evaluate_only(self, population=None, seed=None, base_log_filename=None):
@@ -153,7 +154,7 @@ class GeneticAlgorithm:
         dropout = random.choice([parent1.dropout, parent2.dropout])
         
         # Create child
-        child = Individual(
+        child = GA_Individual(
             seed=child_seed,
             layer_counts=layer_counts,
             rnn_types=rnn_types,

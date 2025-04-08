@@ -3,11 +3,14 @@ import numpy as np
 from tensorflow import keras
 from keras import layers
 import hashlib
+from optimizers.individual import Individual
 
-class Individual:
+class GA_Individual(Individual):
     def __init__(self, seed=None, layer_counts=None, rnn_types=None, units=None, activations=None, dropout=None):
         # Set seed if provided or generate a new one
         self.seed = seed if seed is not None else random.randint(0, 2**32 - 1)
+
+        self.fitness = None
         
         # Initialize attributes with defaults or provided values
         self.layer_counts = layer_counts if layer_counts is not None else random.randint(1, 3)
@@ -15,7 +18,6 @@ class Individual:
         self.units = units if units is not None else [random.randint(1, 10) * 10 for _ in range(self.layer_counts)]
         self.activations = activations if activations is not None else [random.choice(['relu', 'tanh', 'sigmoid']) for _ in range(self.layer_counts)]
         self.dropout = dropout if dropout is not None else random.uniform(0, 0.5)
-        self.fitness = None
 
     def getId(self):
         """Generate a unique short ID based on the individual's architecture."""
@@ -44,7 +46,7 @@ class Individual:
 
     def copy(self):
         """Creates a deep copy of the individual."""
-        return Individual(
+        return GA_Individual(
             seed=self.seed,
             layer_counts=self.layer_counts,
             rnn_types=self.rnn_types[:],
