@@ -17,7 +17,7 @@ class GA_Individual(Individual):
         self.rnn_types = rnn_types if rnn_types is not None else [random.choice(['SimpleRNN', 'LSTM', 'GRU']) for _ in range(self.layer_counts)]
         self.units = units if units is not None else [random.randint(1, 10) * 10 for _ in range(self.layer_counts)]
         self.activations = activations if activations is not None else [random.choice(['relu', 'tanh', 'sigmoid']) for _ in range(self.layer_counts)]
-        self.dropout = dropout if dropout is not None else random.uniform(0, 0.5)
+        self.dropout = dropout if dropout is not None else random.randint(0,5) * 0.1
 
     def getId(self):
         """Generate a unique short ID based on the individual's architecture."""

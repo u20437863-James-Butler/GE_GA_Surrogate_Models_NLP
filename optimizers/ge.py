@@ -23,22 +23,32 @@ class GrammaticalEvolution(Optimizer):
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
 
-        self.population = self.initialize_population()
+        self.population = self.generate_population()
 
         # Track best individual and fitness
         self.best_individual = None
         self.best_fitness = float('-inf')  # Higher fitness is better
 
+        # self.grammar = {
+        #     '<rnn-model>': ["Sequential([<rnn-layers>, <dense-layer>])"],
+        #     '<rnn-layers>': ["<rnn-layer>", "<rnn-layer>, <rnn-layer>", "<rnn-layer>, <rnn-layer>, <rnn-layer>"],
+        #     '<rnn-layer>': ["layers.<rnn-type>(<units>, activation='<activation>', return_sequences=<return-seq>)"],
+        #     '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
+        #     '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
+        #     '<activation>': ["relu", "tanh", "sigmoid"],
+        #     '<return-seq>': ["True", "False"],
+        #     '<dense-layer>': ["layers.Dense(<output-dim>, activation='softmax')"],
+        #     '<output-dim>': [str(u) for u in range(10, 101, 10)]  # Output dim between 10 and 100
+        # }
         self.grammar = {
-            '<rnn-model>': ["Sequential([<rnn-layers>, <dense-layer>])"],
-            '<rnn-layers>': ["<rnn-layer>", "<rnn-layer>, <rnn-layer>", "<rnn-layer>, <rnn-layer>, <rnn-layer>"],
-            '<rnn-layer>': ["layers.<rnn-type>(<units>, activation='<activation>', return_sequences=<return-seq>)"],
+            '<rnn-model>': ["<rnn-layers>\nmodel.add(layers.Dropout(<dropout>))"],
+            '<rnn-layers>': ["<rnn-layer-f>", "<rnn-layer>\n<rnn-layer-f>", "<rnn-layer>\n<rnn-layer>\n<rnn-layer-f>"],
+            '<rnn-layer-f>': ["rnn_layer = getattr(layers, <rnn-type>)\nmodel.add(rnn_layer(<units>,activation=<activation>,return_sequences=False))"],
+            '<rnn-layer>': ["rnn_layer = getattr(layers, <rnn-type>)\nmodel.add(rnn_layer(<units>,activation=<activation>,return_sequences=True))"],
             '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
             '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
             '<activation>': ["relu", "tanh", "sigmoid"],
-            '<return-seq>': ["True", "False"],
-            '<dense-layer>': ["layers.Dense(<output-dim>, activation='softmax')"],
-            '<output-dim>': [str(u) for u in range(10, 101, 10)]  # Output dim between 10 and 100
+            '<dropout>': [str(u * 0.01) for u in range(0, 51, 10)]
         }
 
         # Get input shape and output dim from surrogate
@@ -152,27 +162,56 @@ class GrammaticalEvolution(Optimizer):
         best_index = min(range(self.pop_size), key=lambda i: fitness_scores[i])
         return self.genotype_to_phenotype(self.population[best_index])
 
-    # def genotype_to_phenotype(self, genotype):
-    #     """
-    #     Converts a genotype (list of integers) into a phenotype (valid RNN architecture code).
-    #     """
-    #     return self.expand('<rnn-model>', genotype, 0)
+    def genotype_to_phenotype(self, genotype):
+        """
+        Converts a genotype (list of integers) into a phenotype (valid RNN architecture code).
+        """
+        return self.expand('<rnn-model>', genotype, 0)
 
-    # def expand(self, non_terminal, genotype, index):
-    #     """
-    #     Expands a non-terminal using the genotype and the grammar rules.
-    #     """
-    #     if non_terminal not in self.grammar:
-    #         return non_terminal
-    #     rule_index = genotype[index % len(genotype)] % len(self.grammar[non_terminal])
-    #     rule = self.grammar[non_terminal][rule_index]
-    #     production = []
-    #     for symbol in rule.split():
-    #         if symbol.startswith('<'):  # Non-terminal
-    #             production.append(self.expand(symbol, genotype, index + 1))
-    #         else:  # Terminal
-    #             production.append(symbol)
-    #     return ' '.join(production)
+    def expand(self, non_terminal, genotype, index):
+        """
+        Expands a non-terminal using the genotype and the grammar rules.
+        
+        Args:
+            non_terminal: The non-terminal symbol to expand
+            genotype: The genotype (list of integers)
+            index: Current index in the genotype
+            
+        Returns:
+            The expanded string
+        """
+        if non_terminal not in self.grammar:
+            return non_terminal
+        
+        # Select rule based on genotype value
+        rule_index = genotype[index % len(genotype)] % len(self.grammar[non_terminal])
+        rule = self.grammar[non_terminal][rule_index]
+        
+        # Find all non-terminals in the rule
+        non_terminals = []
+        i = 0
+        while i < len(rule):
+            if rule[i] == '<':
+                start = i
+                # Find the closing bracket
+                while i < len(rule) and rule[i] != '>':
+                    i += 1
+                if i < len(rule):  # Found closing bracket
+                    non_terminals.append((start, i + 1, rule[start:i + 1]))
+            i += 1
+        
+        # Replace all non-terminals with their expansions
+        result = rule
+        offset = 0
+        for start, end, nt in non_terminals:
+            # Recursively expand the non-terminal
+            expansion = self.expand(nt, genotype, index + 1)
+            # Replace in the result string, adjusting for previous expansions
+            result = result[:start + offset] + expansion + result[end + offset:]
+            # Update offset based on difference in length
+            offset += len(expansion) - (end - start)
+        
+        return result
     
     # def build_model_from_code(self, model_code):
     #     """

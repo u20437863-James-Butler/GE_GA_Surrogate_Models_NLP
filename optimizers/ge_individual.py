@@ -14,13 +14,13 @@ class GE_Individual(Individual):
         
         # Genotype is a list of integers (codons)
         self.genotype_length = 10
-        self.genotype = genotype if genotype is not None else [self.rng.randint(0, 255) for _ in range(self.genotype_length)]
+        self.genotype = genotype if genotype is not None else [random.randint(0, 255) for _ in range(self.genotype_length)]
         
         # Phenotype will hold the decoded architecture
         self.phenotype = None
 
         # Id stored as it cannot be easily constructed by the 
-        self.id = id
+        self.id = id if id is not None else str(self.genotype)
 
     def setGene(self, gene):
         self.genotype = gene
@@ -56,43 +56,42 @@ class GE_Individual(Individual):
         tf_seed = self.seed % (2**31 - 1)  # TensorFlow seed must be in a smaller range
         keras.utils.set_random_seed(tf_seed)
         
-        phenotype = self.phenotype
-        model = keras.Sequential()
+        if self.phenotype is None:
+            return None
         
-        # Add embedding layer to convert token indices to dense vectors
-        embedding_dim = 50  # Adjust as needed
-        
-        # Input layer - shape should be (sequence_length,) for token indices
-        model.add(layers.Input(shape=(input_shape[0],)))
-        
-        # Embedding layer converts input to shape (batch_size, sequence_length, embedding_dim)
-        model.add(layers.Embedding(output_dim, embedding_dim))
-        
-        print(self.getIdLong())
-        
-        # Add the RNN layers
-        for i in range(phenotype['layer_counts']):
-            rnn_layer = getattr(layers, phenotype['rnn_types'][i])
-            # For all but the last RNN layer, set return_sequences=True
-            return_seq = True if i < phenotype['layer_counts'] - 1 else False
-            model.add(rnn_layer(
-                phenotype['units'][i], 
-                activation=phenotype['activations'][i], 
-                return_sequences=return_seq
-            ))
-        
-        # Add dropout and output layer
-        model.add(layers.Dropout(phenotype['dropout']))
-        model.add(layers.Dense(output_dim, activation='softmax'))
-        
-        # Compile the model
-        model.compile(
-            loss='sparse_categorical_crossentropy', 
-            optimizer='adam', 
-            metrics=['accuracy']
-        )
-        
-        return model
+        try:
+            # Initialize the model
+            model = keras.Sequential()
+            
+            # Add embedding layer to convert token indices to dense vectors
+            embedding_dim = 50  # Adjust as needed
+            
+            # Input layer - shape should be (sequence_length,) for token indices
+            model.add(layers.Input(shape=(input_shape[0],)))
+            
+            # Embedding layer converts input to shape (batch_size, sequence_length, embedding_dim)
+            model.add(layers.Embedding(output_dim, embedding_dim))
+            
+            print(self.getIdLong())
+            
+            # Execute the phenotype code to add RNN layers and dropout
+            # The phenotype code expects 'model' and 'layers' to exist
+            exec(self.phenotype, {"layers": layers}, {"model": model})
+            
+            # Add output layer
+            model.add(layers.Dense(output_dim, activation='softmax'))
+            
+            # Compile the model
+            model.compile(
+                loss='sparse_categorical_crossentropy', 
+                optimizer='adam', 
+                metrics=['accuracy']
+            )
+            
+            return model
+        except Exception as e:
+            print(f"Error building model: {e}")
+            return None
     
     def __str__(self):
         """String representation of the individual."""
