@@ -1,8 +1,10 @@
 import random
 import numpy as np
+import hashlib
 from tensorflow import keras
 from keras import layers
 import tensorflow as tf
+from optimizers.individual import Individual
 
 class Cell:
     """Represents a recurrent cell in the architecture"""
@@ -97,9 +99,11 @@ class Cell:
                 i = random.randint(0, j-1)
                 self.connections[i, j] = True
 
-
-class CellBasedIndividual:
-    def __init__(self, num_cells=None, units=None, dropout=None, cell=None):
+class CellBasedIndividual(Individual):
+    def __init__(self, seed=None, num_cells=None, units=None, dropout=None, cell=None):
+        # Set seed if provided or generate a new one
+        self.seed = seed if seed is not None else random.randint(0, 2**32 - 1)
+        
         self.caps = {
             "num_cells": 5,
             "units": 100,
@@ -116,9 +120,39 @@ class CellBasedIndividual:
         
         self.fitness = None
     
+    def getId(self):
+        """Generate a unique short ID based on the individual's architecture."""
+        id_string = (
+            f"NC{self.num_cells}_" +
+            f"U{self.units}_" +
+            f"DO{self.dropout:.3f}_" +
+            f"NN{self.cell.num_nodes}_" +
+            f"S{self.seed}"
+        )
+        hash_id = hashlib.md5(id_string.encode()).hexdigest()[:8]
+        return hash_id
+
+    def getIdLong(self):
+        """Generate a unique long ID based on the individual's architecture."""
+        # Create a string representation of operations and connections
+        ops_str = '_'.join(self.cell.operations)
+        conn_str = '_'.join(''.join(str(int(x)) for x in row) for row in self.cell.connections)
+        
+        id_string = (
+            f"NC{self.num_cells}_" +
+            f"U{self.units}_" +
+            f"DO{self.dropout:.3f}_" +
+            f"NN{self.cell.num_nodes}_" +
+            f"OPS{ops_str}_" +
+            f"CONN{conn_str}_" +
+            f"S{self.seed}"
+        )
+        return id_string
+    
     def copy(self):
         """Creates a deep copy of the individual"""
         return CellBasedIndividual(
+            seed=self.seed,
             num_cells=self.num_cells,
             units=self.units,
             dropout=self.dropout,
@@ -207,22 +241,35 @@ class CellBasedIndividual:
     
     def build_model(self, input_shape, output_dim):
         """Creates and returns an RNN model using the evolved cell architecture"""
+        # Set the seed for reproducibility
+        tf_seed = self.seed % (2**31 - 1)  # TensorFlow seed must be in a smaller range
+        keras.utils.set_random_seed(tf_seed)
+        
         model = keras.Sequential()
+        
+        # Add embedding layer to convert token indices to dense vectors
+        embedding_dim = 50  # Adjust as needed
+        
+        # Input layer - shape should be (sequence_length,) for token indices
+        model.add(layers.Input(shape=(input_shape[0],)))
+        
+        # Embedding layer converts input to shape (batch_size, sequence_length, embedding_dim)
+        model.add(layers.Embedding(output_dim, embedding_dim))
+        
+        print(self.getIdLong())
         
         # Create RNN layer with custom cell
         rnn_cell = self.build_rnn_cell()
         for i in range(self.num_cells - 1):
             model.add(keras.layers.RNN(
                 rnn_cell, 
-                return_sequences=True,
-                input_shape=input_shape if i == 0 else None
+                return_sequences=True
             ))
         
         # Last RNN layer doesn't return sequences
         model.add(keras.layers.RNN(
             rnn_cell,
-            return_sequences=False,
-            input_shape=input_shape if self.num_cells == 1 else None
+            return_sequences=False
         ))
         
         # Add dropout and output layer
@@ -233,3 +280,14 @@ class CellBasedIndividual:
         model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         
         return model
+        
+    def __str__(self):
+        """String representation of the individual."""
+        return (
+            f"CellIndividual(id={self.getId()}, "
+            f"cells={self.num_cells}, "
+            f"units={self.units}, "
+            f"nodes={self.cell.num_nodes}, "
+            f"dropout={self.dropout:.3f}, "
+            f"seed={self.seed})"
+        )

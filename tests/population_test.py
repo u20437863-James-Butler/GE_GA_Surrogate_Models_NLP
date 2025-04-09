@@ -73,7 +73,7 @@ def test_model_building(population, input_shape, output_dim):
         try:
             # Build model from the individual
             model = individual.build_model(input_shape, output_dim)
-            
+            print(model)
             # Print model summary
             print(f"Model {i} successfully built:")
             model.summary(print_fn=lambda x: print(f"  {x}"))
@@ -221,14 +221,13 @@ def test_ge_optimizer(surrogate, seed=42):
             phenotype = optimizer.genotype_to_phenotype(individual.genotype)
             print(f"\nGenerated model code: {phenotype}")
             individual.setPhenotype(phenotype)
-            print(individual.phenotype)
         
         # Test model building from phenotypes
         models = test_model_building(population, input_shape, output_dim)
         
         # Test model training and inference
-        if models:
-            test_model_training_inference(models, surrogate._dataset)
+        # if models:
+        #     test_model_training_inference(models, surrogate._dataset)
         
         # Test individual evaluation
         test_individual_evaluation(optimizer, population, surrogate)

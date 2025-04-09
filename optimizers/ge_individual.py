@@ -43,7 +43,7 @@ class GE_Individual(Individual):
         return GE_Individual(
             seed=self.seed,
             genotype=self.genotype[:],
-            id=id
+            id=self.id
         )
 
     def getFitness(self):

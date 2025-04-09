@@ -6,7 +6,7 @@ from optimizers.optimizer import Optimizer
 from optimizers.ge_individual import GE_Individual
 
 class GrammaticalEvolution(Optimizer):
-    def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, max_genotype_length=8):
+    def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, max_genotype_length=8, seed=None):
         """
         Initialize the Grammatical Evolution with a surrogate model for fitness evaluation.
         
@@ -22,29 +22,19 @@ class GrammaticalEvolution(Optimizer):
         self.generations = generations
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
+        self.seed = seed
 
-        self.population = self.generate_population()
+        self.population = self.generate_population(seed=self.seed)
 
         # Track best individual and fitness
         self.best_individual = None
         self.best_fitness = float('-inf')  # Higher fitness is better
 
-        # self.grammar = {
-        #     '<rnn-model>': ["Sequential([<rnn-layers>, <dense-layer>])"],
-        #     '<rnn-layers>': ["<rnn-layer>", "<rnn-layer>, <rnn-layer>", "<rnn-layer>, <rnn-layer>, <rnn-layer>"],
-        #     '<rnn-layer>': ["layers.<rnn-type>(<units>, activation='<activation>', return_sequences=<return-seq>)"],
-        #     '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
-        #     '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
-        #     '<activation>': ["relu", "tanh", "sigmoid"],
-        #     '<return-seq>': ["True", "False"],
-        #     '<dense-layer>': ["layers.Dense(<output-dim>, activation='softmax')"],
-        #     '<output-dim>': [str(u) for u in range(10, 101, 10)]  # Output dim between 10 and 100
-        # }
         self.grammar = {
             '<rnn-model>': ["<rnn-layers>\nmodel.add(layers.Dropout(<dropout>))"],
             '<rnn-layers>': ["<rnn-layer-f>", "<rnn-layer>\n<rnn-layer-f>", "<rnn-layer>\n<rnn-layer>\n<rnn-layer-f>"],
-            '<rnn-layer-f>': ["rnn_layer = getattr(layers, <rnn-type>)\nmodel.add(rnn_layer(<units>,activation=<activation>,return_sequences=False))"],
-            '<rnn-layer>': ["rnn_layer = getattr(layers, <rnn-type>)\nmodel.add(rnn_layer(<units>,activation=<activation>,return_sequences=True))"],
+            '<rnn-layer-f>': ["rnn_layer = getattr(layers, '<rnn-type>')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=False))"],
+            '<rnn-layer>': ["rnn_layer = getattr(layers, '<rnn-type>')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=True))"],
             '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
             '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
             '<activation>': ["relu", "tanh", "sigmoid"],
@@ -69,7 +59,7 @@ class GrammaticalEvolution(Optimizer):
             random.seed(seed)
             np.random.seed(seed)
             
-        self.population = [GE_Individual() for _ in range(self.pop_size)]
+        self.population = [GE_Individual(seed=self.seed+i) for i in range(self.pop_size)]
         return self.population
     
     def evaluate_only(self, population=None, seed=None, base_log_filename=None):
@@ -93,6 +83,10 @@ class GrammaticalEvolution(Optimizer):
             for individual in eval_population:
                 individual.seed = seed
         
+        # Initialize phenotypes
+        for individual in population:
+            individual.setPhenotype(self.genotype_to_phenotype(individual.genotype))
+
         # Use the surrogate to evaluate all individuals
         fitness_scores = self.surrogate.evaluate_population(eval_population, seed=seed, base_log_filename=base_log_filename)
         
@@ -212,16 +206,3 @@ class GrammaticalEvolution(Optimizer):
             offset += len(expansion) - (end - start)
         
         return result
-    
-    # def build_model_from_code(self, model_code):
-    #     """
-    #     Executes the generated model code and returns a compiled Keras model.
-    #     """
-    #     try:
-    #         local_vars = {}
-    #         exec(f"from tensorflow.keras import Sequential, layers\nmodel = {model_code}", {}, local_vars)
-    #         model = local_vars.get("model")
-    #         model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-    #         return model
-    #     except Exception:
-    #         return None

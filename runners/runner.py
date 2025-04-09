@@ -13,7 +13,7 @@ except ImportError:
     # Alternative import if datasets is not a proper package
     sys.path.append(os.path.join(parent_dir, 'datasets'))
     from ptb import get_ptb_dataset
-    from wt2 import get_wt2_dataset
+    # from wt2 import get_wt2_dataset
     # from wt103 import *
 
 # For surrogates imports
@@ -31,14 +31,14 @@ except ImportError:
 # For optimizers imports
 try:
     from optimizers.ga import GeneticAlgorithm
-    # from optimizers.ge import GrammaticalEvolution
+    from optimizers.ge import GrammaticalEvolution
     # from optimizers.ga_cell import CellBasedGeneticAlgorithm
     # from optimizers.ge_cell import CellBasedGrammaticalEvolution
 except ImportError:
     print("Could not import optimizers directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'optimizers'))
     from ga import GeneticAlgorithm
-    # from ge import GrammaticalEvolution
+    from ge import GrammaticalEvolution
     # from ga_cell import CellBasedGeneticAlgorithm
     # from ge_cell import CellBasedGrammaticalEvolution
 
@@ -54,7 +54,7 @@ except ImportError:
 
 supported_datasets = {
     'ptb': get_ptb_dataset(seq_length=35, batch_size=20),
-    'wt2': get_wt2_dataset(seq_length=35, batch_size=20),
+    # 'wt2': get_wt2_dataset(seq_length=35, batch_size=20),
 }
 
 dataset_name = 'ptb'
@@ -70,13 +70,13 @@ surrogate_name = 'mt'
 surrogate = supported_surrogates[surrogate_name]
 
 supported_optimizers = {
-    'ga': GeneticAlgorithm(surrogate, pop_size=1, generations=5, mutation_rate=0.2, crossover_rate=0.8),
-    # 'ge': GrammaticalEvolution(),
+    'ga': GeneticAlgorithm(surrogate, pop_size=1, generations=5, mutation_rate=0.2, crossover_rate=0.8, seed=41),
+    'ge': GrammaticalEvolution(surrogate, pop_size=1, generations=5, mutation_rate=0.2, crossover_rate=0.8, seed=41),
     # 'cell_ga': CellBasedGeneticAlgorithm(),
     # 'cell_ge': CellBasedGrammaticalEvolution(),
 }
 
-optimizer_name = 'ga'
+optimizer_name = 'ge'
 optimizer = supported_optimizers[optimizer_name]
 
 supported_evaluators = {

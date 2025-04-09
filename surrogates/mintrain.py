@@ -147,14 +147,13 @@ class MinTrainSurrogate:
             list: List of fitness scores
         """
         fitness_scores = []
-        
         for i, individual in enumerate(population):
             # Create individual log filename if base provided
             if base_log_filename:
                 log_filename = f"{base_log_filename}_individual_{i}.csv"
             else:
                 log_filename = None
-                
+
             # Use the common seed if provided, otherwise individual's seed will be used
             fitness = self.evaluate(individual, seed=seed, log_filename=log_filename)
             fitness_scores.append(fitness)
