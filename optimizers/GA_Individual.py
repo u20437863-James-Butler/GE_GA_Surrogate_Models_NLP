@@ -14,16 +14,16 @@ class GA_Individual(Individual):
         
         # Initialize attributes with defaults or provided values
         self.layer_counts = layer_counts if layer_counts is not None else random.randint(1, 3)
-        self.rnn_types = rnn_types if rnn_types is not None else [random.choice(['SimpleRNN', 'LSTM', 'GRU']) for _ in range(self.layer_counts)]
-        self.units = units if units is not None else [random.randint(1, 10) * 10 for _ in range(self.layer_counts)]
+        # self.rnn_types = rnn_types if rnn_types is not None else [random.choice(['SimpleRNN', 'LSTM', 'GRU']) for _ in range(self.layer_counts)]
+        self.units = units if units is not None else [random.choice([16,32,64,128]) for _ in range(self.layer_counts)]
         self.activations = activations if activations is not None else [random.choice(['relu', 'tanh', 'sigmoid']) for _ in range(self.layer_counts)]
-        self.dropout = dropout if dropout is not None else random.randint(0,5) * 0.1
+        self.dropout = dropout if dropout is not None else random.randint(0,9) * 0.1
 
     def getId(self):
         """Generate a unique short ID based on the individual's architecture."""
         id_string = (
             f"LC{self.layer_counts}_" +
-            f"RT{'_'.join(self.rnn_types)}_" +
+            # f"RT{'_'.join(self.rnn_types)}_" +
             f"U{'_'.join(map(str, self.units))}_" +
             f"A{'_'.join(self.activations)}_" +
             f"DO{self.dropout:.3f}_" +
@@ -36,7 +36,7 @@ class GA_Individual(Individual):
         """Generate a unique long ID based on the individual's architecture."""
         id_string = (
             f"LC{self.layer_counts}_" +
-            f"RT{'_'.join(self.rnn_types)}_" +
+            # f"RT{'_'.join(self.rnn_types)}_" +
             f"U{'_'.join(map(str, self.units))}_" +
             f"A{'_'.join(self.activations)}_" +
             f"DO{self.dropout:.3f}_" +
@@ -49,7 +49,7 @@ class GA_Individual(Individual):
         return GA_Individual(
             seed=self.seed,
             layer_counts=self.layer_counts,
-            rnn_types=self.rnn_types[:],
+            # rnn_types=self.rnn_types[:],
             units=self.units[:],
             activations=self.activations[:],
             dropout=self.dropout
@@ -84,10 +84,9 @@ class GA_Individual(Individual):
         
         # Add the RNN layers
         for i in range(self.layer_counts):
-            rnn_layer = getattr(layers, self.rnn_types[i])
             # For all but the last RNN layer, set return_sequences=True
             return_seq = True if i < self.layer_counts - 1 else False
-            model.add(rnn_layer(
+            model.add(layers.LSTM(
                 self.units[i], 
                 activation=self.activations[i], 
                 return_sequences=return_seq
@@ -111,7 +110,7 @@ class GA_Individual(Individual):
         return (
             f"Individual(id={self.getId()}, "
             f"layers={self.layer_counts}, "
-            f"types={self.rnn_types}, "
+            # f"types={self.rnn_types}, "
             f"units={self.units}, "
             f"activations={self.activations}, "
             f"dropout={self.dropout:.3f}, "

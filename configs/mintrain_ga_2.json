@@ -6,23 +6,23 @@
     },
     "surrogate": {
         "name": "mt",
-        "num_epochs": 40,
+        "num_epochs": 50,
         "batch_size": 512,
         "verbose": 1
     },
     "optimizer": {
-        "name": "ge",
+        "name": "ga",
         "pop_size": 20,
         "generations": 10,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
-        "seed": 42
+        "seed": 20
     },
     "evaluator": {
         "name": "surrogate",
         "num_runs": 5,
         "log_interval": 1,
-        "starter_seed": 40
+        "starter_seed": 20
     },
     "experiment": {
         "description": "Grammatical Evolution Mintrain",

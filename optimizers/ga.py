@@ -130,11 +130,11 @@ class GeneticAlgorithm(Optimizer):
         max_layers = max(parent1.layer_counts, parent2.layer_counts)
         
         # Extend parent arrays if needed for proper crossover
-        p1_rnn_types = parent1.rnn_types + ['LSTM'] * (max_layers - len(parent1.rnn_types))
-        p2_rnn_types = parent2.rnn_types + ['LSTM'] * (max_layers - len(parent2.rnn_types))
+        # p1_rnn_types = parent1.rnn_types + ['SimpleRNN'] * (max_layers - len(parent1.rnn_types))
+        # p2_rnn_types = parent2.rnn_types + ['SimpleRNN'] * (max_layers - len(parent2.rnn_types))
         
-        p1_units = parent1.units + [64] * (max_layers - len(parent1.units))
-        p2_units = parent2.units + [64] * (max_layers - len(parent2.units))
+        p1_units = parent1.units + [50] * (max_layers - len(parent1.units))
+        p2_units = parent2.units + [50] * (max_layers - len(parent2.units))
         
         p1_activations = parent1.activations + ['tanh'] * (max_layers - len(parent1.activations))
         p2_activations = parent2.activations + ['tanh'] * (max_layers - len(parent2.activations))
@@ -143,7 +143,7 @@ class GeneticAlgorithm(Optimizer):
         p2_return_sequences = parent2.return_sequences + [False] * (max_layers - len(parent2.return_sequences))
         
         # Create crossover arrays
-        rnn_types = [random.choice([p1, p2]) for p1, p2 in zip(p1_rnn_types, p2_rnn_types)][:layer_counts]
+        # rnn_types = [random.choice([p1, p2]) for p1, p2 in zip(p1_rnn_types, p2_rnn_types)][:layer_counts]
         units = [random.choice([p1, p2]) for p1, p2 in zip(p1_units, p2_units)][:layer_counts]
         activations = [random.choice([p1, p2]) for p1, p2 in zip(p1_activations, p2_activations)][:layer_counts]
         return_sequences = [random.choice([p1, p2]) for p1, p2 in zip(p1_return_sequences, p2_return_sequences)][:layer_counts]
@@ -158,7 +158,7 @@ class GeneticAlgorithm(Optimizer):
         child = GA_Individual(
             seed=child_seed,
             layer_counts=layer_counts,
-            rnn_types=rnn_types,
+            # rnn_types=rnn_types,
             units=units,
             activations=activations,
             return_sequences=return_sequences,
@@ -177,22 +177,22 @@ class GeneticAlgorithm(Optimizer):
         # Each property has a chance to mutate based on mutation rate
         if random.random() < self.mutation_rate:
             # Select one random aspect to mutate
-            mutation_type = random.randint(0, 5)
+            mutation_type = random.randint(0, 4)
             
             if mutation_type == 0:
                 # Mutate layer count
                 individual.layer_counts = random.randint(1, 3)
                 # Adjust lengths of other properties accordingly
-                individual.rnn_types = individual.rnn_types[:individual.layer_counts]
+                # individual.rnn_types = individual.rnn_types[:individual.layer_counts]
                 individual.units = individual.units[:individual.layer_counts]
                 individual.activations = individual.activations[:individual.layer_counts]
                 individual.return_sequences = individual.return_sequences[:individual.layer_counts]
                 
                 # Add new layers if needed
-                while len(individual.rnn_types) < individual.layer_counts:
-                    individual.rnn_types.append(random.choice(['SimpleRNN', 'LSTM', 'GRU']))
+                # while len(individual.rnn_types) < individual.layer_counts:
+                #     individual.rnn_types.append(random.choice(['SimpleRNN', 'LSTM', 'GRU']))
                 while len(individual.units) < individual.layer_counts:
-                    individual.units.append(random.randint(1, 10) * 10)
+                    individual.units.append(random.choice([16,32,64,128]))
                 while len(individual.activations) < individual.layer_counts:
                     individual.activations.append(random.choice(['relu', 'tanh', 'sigmoid']))
                 while len(individual.return_sequences) < individual.layer_counts:
@@ -202,30 +202,30 @@ class GeneticAlgorithm(Optimizer):
                 if individual.layer_counts > 1:
                     individual.return_sequences[-1] = False
                     
-            elif mutation_type == 1:
-                # Mutate one RNN type
-                layer_idx = random.randint(0, individual.layer_counts - 1)
-                individual.rnn_types[layer_idx] = random.choice(['SimpleRNN', 'LSTM', 'GRU'])
+            # elif mutation_type == 1:
+            #     # Mutate one RNN type
+            #     layer_idx = random.randint(0, individual.layer_counts - 1)
+            #     individual.rnn_types[layer_idx] = random.choice(['SimpleRNN', 'LSTM', 'GRU'])
                 
-            elif mutation_type == 2:
+            elif mutation_type == 1:
                 # Mutate one unit size
                 layer_idx = random.randint(0, individual.layer_counts - 1)
-                individual.units[layer_idx] = random.randint(1, 10) * 10
+                individual.units[layer_idx] = random.choice([16,32,64,128])
                 
-            elif mutation_type == 3:
+            elif mutation_type == 2:
                 # Mutate one activation
                 layer_idx = random.randint(0, individual.layer_counts - 1)
                 individual.activations[layer_idx] = random.choice(['relu', 'tanh', 'sigmoid'])
                 
-            elif mutation_type == 4:
+            elif mutation_type == 3:
                 # Mutate one return_sequences (but not the last one in multi-layer models)
                 if individual.layer_counts > 1:
                     layer_idx = random.randint(0, individual.layer_counts - 2)
                     individual.return_sequences[layer_idx] = not individual.return_sequences[layer_idx]
                     
-            elif mutation_type == 5:
+            elif mutation_type == 4:
                 # Mutate dropout
-                individual.dropout = random.uniform(0, 0.5)
+                individual.dropout = random.uniform(0, 0.9)
     
     def evolve(self):
         """

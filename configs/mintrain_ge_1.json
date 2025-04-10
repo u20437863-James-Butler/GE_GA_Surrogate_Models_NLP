@@ -6,7 +6,7 @@
     },
     "surrogate": {
         "name": "mt",
-        "num_epochs": 40,
+        "num_epochs": 50,
         "batch_size": 512,
         "verbose": 1
     },
@@ -16,7 +16,7 @@
         "generations": 10,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
-        "seed": 42
+        "seed": 10
     },
     "evaluator": {
         "name": "surrogate",

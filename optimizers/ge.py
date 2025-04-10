@@ -33,12 +33,12 @@ class GrammaticalEvolution(Optimizer):
         self.grammar = {
             '<rnn-model>': ["<rnn-layers>\nmodel.add(layers.Dropout(<dropout>))"],
             '<rnn-layers>': ["<rnn-layer-f>", "<rnn-layer>\n<rnn-layer-f>", "<rnn-layer>\n<rnn-layer>\n<rnn-layer-f>"],
-            '<rnn-layer-f>': ["rnn_layer = getattr(layers, '<rnn-type>')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=False))"],
-            '<rnn-layer>': ["rnn_layer = getattr(layers, '<rnn-type>')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=True))"],
-            '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
-            '<units>': [str(u) for u in range(10, 101, 10)],  # Units between 10 and 100
+            '<rnn-layer-f>': ["rnn_layer = getattr(layers, 'LSTM')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=False))"],
+            '<rnn-layer>': ["rnn_layer = getattr(layers, 'LSTM')\nmodel.add(rnn_layer(<units>,activation='<activation>',return_sequences=True))"],
+            # '<rnn-type>': ["SimpleRNN", "LSTM", "GRU"],
+            '<units>': ['16','32','64','128'],
             '<activation>': ["relu", "tanh", "sigmoid"],
-            '<dropout>': [str(u * 0.01) for u in range(0, 51, 10)]
+            '<dropout>': [str(u * 0.01) for u in range(0, 91, 10)]
         }
 
         # Get input shape and output dim from surrogate

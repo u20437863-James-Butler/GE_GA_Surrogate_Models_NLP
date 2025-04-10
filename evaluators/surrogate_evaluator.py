@@ -8,8 +8,9 @@ class SurrEvaluator:
     """
     Evaluator class to run neural architecture search experiments.
     
-    This class takes a surrogate model and dataset, then evaluates a fixed
+    This class takes a surrogate model and dataset, then evaluates a
     population of neural architectures across multiple seeds.
+    Each run uses a different seed to generate a unique population.
     """
     
     def __init__(self, optimizer, num_runs=5, log_interval=1, seeds=None, starter_seed=42):
@@ -44,9 +45,8 @@ class SurrEvaluator:
         # Results across all runs
         self.run_results = []
         
-        # Generate population once to reuse across runs
+        # Configure optimizer with dataset parameters
         self.configure_optimizer()
-        self.population = None  # Will be generated in the first run
         
     def configure_optimizer(self):
         """Configure the optimizer with dataset parameters"""
@@ -61,7 +61,7 @@ class SurrEvaluator:
         
         Args:
             run_index: Index of the current run
-            seed: Seed for weight initialization
+            seed: Seed for both population generation and weight initialization
             
         Returns:
             dict: Results of this run
@@ -90,46 +90,37 @@ class SurrEvaluator:
         # Point optimizer to new surrogate
         self.optimizer.surrogate = new_surrogate
         
-        # Generate population only on first run, then reuse it
-        if self.population is None:
-            print("Generating initial population (will be reused across all runs)")
-            self.population = self.optimizer.generate_population(seed=42)
-        else:
-            print("Reusing initial population from first run")
-            
-        # Set the seed for weight initialization
-        start_time = time.time()
+        # Generate a unique population for this run using the run's seed
+        print(f"Generating new population for run {run_index+1} with seed {seed}")
         
-        # Deep copy the population to avoid modifying the original
-        population_copy = []
-        for individual in self.population:
-            population_copy.append(individual.copy())
-            
-        # Evaluate population with seed affecting only weights
+        # Set seeds for reproducibility but make them unique for each run
         np.random.seed(seed)
         tf.random.set_seed(seed)
         
+        # Generate a new population for each run using the current seed
+        population = self.optimizer.generate_population(seed=seed)
+            
+        start_time = time.time()
+        
         print(f"Training all individuals with seed {seed} for {self.surrogate.num_epochs} epochs")
         fitness_scores = self.optimizer.evaluate_only(
-            population=population_copy,
+            population=population,
             seed=seed, 
             base_log_filename=run_name
         )
         
         elapsed = time.time() - start_time
         
-
         # Get best individual from this run by finding the index with the highest fitness score
         best_index = np.argmax(fitness_scores) if fitness_scores else None
         if best_index is not None:
-            best_individual = population_copy[best_index]
+            best_individual = population[best_index]
             best_fitness = fitness_scores[best_index]
         else:
             best_individual = None
             best_fitness = float('-inf')
 
         best_perplexity = -best_fitness
-
         
         print(f"Run {run_index+1} complete in {elapsed:.1f}s")
         print(f"Best Perplexity: {best_perplexity:.2f}")
@@ -153,7 +144,7 @@ class SurrEvaluator:
         print(f"Surrogate model: {self.surrogate.__class__.__name__}")
         print(f"Number of runs: {self.num_runs} with seeds {self.seeds}")
         print(f"Training epochs per model: {self.surrogate.num_epochs}")
-        print(f"Using the same population across all runs, only the neural network weights change")
+        print(f"Using different populations for each run, with unique seeds")
         
         start_time = time.time()
         self.configure_optimizer()
