@@ -1,0 +1,32 @@
+{
+    "dataset": {
+        "name": "ptb",
+        "seq_length": 35,
+        "batch_size": 20
+    },
+    "surrogate": {
+        "name": "mt",
+        "num_epochs": 40,
+        "batch_size": 512,
+        "verbose": 1
+    },
+    "optimizer": {
+        "name": "ge",
+        "pop_size": 20,
+        "generations": 10,
+        "mutation_rate": 0.2,
+        "crossover_rate": 0.8,
+        "seed": 42
+    },
+    "evaluator": {
+        "name": "surrogate",
+        "num_runs": 5,
+        "log_interval": 1,
+        "starter_seed": 30
+    },
+    "experiment": {
+        "description": "Grammatical Evolution Mintrain",
+        "save_results": true,
+        "results_dir": "../results"
+    }
+}
