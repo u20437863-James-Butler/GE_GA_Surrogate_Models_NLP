@@ -118,47 +118,30 @@ class GeneticAlgorithm(Optimizer):
             Individual: New child individual
         """
         if random.random() > self.crossover_rate:
-            return parent1.copy()
+            return random.choice([parent1.copy(),parent2.copy()])
         
         # Create new child with shared seed for weight consistency
-        child_seed = random.randint(0, 2**32 - 1)
+        child_seed = random.choice([parent1.seed,parent2.seed])
         
         # Choose layer count from either parent
         layer_counts = random.choice([parent1.layer_counts, parent2.layer_counts])
         
-        # Make sure arrays have proper length
-        max_layers = max(parent1.layer_counts, parent2.layer_counts)
-        
-        # Extend parent arrays if needed for proper crossover
-        # p1_rnn_types = parent1.rnn_types + ['SimpleRNN'] * (max_layers - len(parent1.rnn_types))
-        # p2_rnn_types = parent2.rnn_types + ['SimpleRNN'] * (max_layers - len(parent2.rnn_types))
-        
-        p1_units = parent1.units + [50] * (max_layers - len(parent1.units))
-        p2_units = parent2.units + [50] * (max_layers - len(parent2.units))
-        
-        p1_activations = parent1.activations + ['tanh'] * (max_layers - len(parent1.activations))
-        p2_activations = parent2.activations + ['tanh'] * (max_layers - len(parent2.activations))
-        
-        p1_return_sequences = parent1.return_sequences + [False] * (max_layers - len(parent1.return_sequences))
-        p2_return_sequences = parent2.return_sequences + [False] * (max_layers - len(parent2.return_sequences))
-        
-        # Create crossover arrays
-        # rnn_types = [random.choice([p1, p2]) for p1, p2 in zip(p1_rnn_types, p2_rnn_types)][:layer_counts]
-        units = [random.choice([p1, p2]) for p1, p2 in zip(p1_units, p2_units)][:layer_counts]
-        activations = [random.choice([p1, p2]) for p1, p2 in zip(p1_activations, p2_activations)][:layer_counts]
-        return_sequences = [random.choice([p1, p2]) for p1, p2 in zip(p1_return_sequences, p2_return_sequences)][:layer_counts]
+        # Build layers from each parent
+        units = []
+        activations = []
+        for i in layer_counts:
+            units.append(random.choice([parent1,parent2]).units[i])
+            units.append(random.choice([parent1,parent2]).activations[i])
         
         # Ensure last layer has return_sequences=False if there are multiple layers
-        if layer_counts > 1:
-            return_sequences[-1] = False
-            
+        return_sequences = [True] * (layer_counts - 1) + [False]
+
         dropout = random.choice([parent1.dropout, parent2.dropout])
         
         # Create child
         child = GA_Individual(
             seed=child_seed,
             layer_counts=layer_counts,
-            # rnn_types=rnn_types,
             units=units,
             activations=activations,
             return_sequences=return_sequences,
@@ -177,35 +160,23 @@ class GeneticAlgorithm(Optimizer):
         # Each property has a chance to mutate based on mutation rate
         if random.random() < self.mutation_rate:
             # Select one random aspect to mutate
-            mutation_type = random.randint(0, 4)
+            mutation_type = random.randint(0, 3)
             
             if mutation_type == 0:
                 # Mutate layer count
                 individual.layer_counts = random.randint(1, 3)
                 # Adjust lengths of other properties accordingly
-                # individual.rnn_types = individual.rnn_types[:individual.layer_counts]
                 individual.units = individual.units[:individual.layer_counts]
                 individual.activations = individual.activations[:individual.layer_counts]
-                individual.return_sequences = individual.return_sequences[:individual.layer_counts]
                 
                 # Add new layers if needed
-                # while len(individual.rnn_types) < individual.layer_counts:
-                #     individual.rnn_types.append(random.choice(['SimpleRNN', 'LSTM', 'GRU']))
                 while len(individual.units) < individual.layer_counts:
                     individual.units.append(random.choice([16,32,64,128]))
                 while len(individual.activations) < individual.layer_counts:
                     individual.activations.append(random.choice(['relu', 'tanh', 'sigmoid']))
-                while len(individual.return_sequences) < individual.layer_counts:
-                    individual.return_sequences.append(True)
                     
                 # Ensure last layer has return_sequences=False if multiple layers
-                if individual.layer_counts > 1:
-                    individual.return_sequences[-1] = False
-                    
-            # elif mutation_type == 1:
-            #     # Mutate one RNN type
-            #     layer_idx = random.randint(0, individual.layer_counts - 1)
-            #     individual.rnn_types[layer_idx] = random.choice(['SimpleRNN', 'LSTM', 'GRU'])
+                individual.return_sequences = [True] * (individual.layer_counts - 1) + [False]
                 
             elif mutation_type == 1:
                 # Mutate one unit size
@@ -216,14 +187,8 @@ class GeneticAlgorithm(Optimizer):
                 # Mutate one activation
                 layer_idx = random.randint(0, individual.layer_counts - 1)
                 individual.activations[layer_idx] = random.choice(['relu', 'tanh', 'sigmoid'])
-                
-            elif mutation_type == 3:
-                # Mutate one return_sequences (but not the last one in multi-layer models)
-                if individual.layer_counts > 1:
-                    layer_idx = random.randint(0, individual.layer_counts - 2)
-                    individual.return_sequences[layer_idx] = not individual.return_sequences[layer_idx]
                     
-            elif mutation_type == 4:
+            elif mutation_type == 3:
                 # Mutate dropout
                 individual.dropout = random.uniform(0, 0.9)
     
