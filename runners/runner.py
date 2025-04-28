@@ -7,10 +7,12 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # For loggers imports
 try:
     from logs.basic_logger import Logger
+    from logs.opt_logger import Opt_Logger
 except ImportError:
     print("Could not import datasets directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'logs'))
     from basic_logger import Logger
+    from opt_logger import Opt_Logger
 
 # For datasets imports
 try:
@@ -104,10 +106,10 @@ def main():
         # 'rf': RandomForestSurrogate(dataset, initial_models=30, train_epochs=5, retrain_interval=20, verbose=1),
     }
     surrogate = supported_surrogates[config["surrogate"]["name"]]
-
+    opt_logger = Opt_Logger(config=config)
     supported_optimizers = {
-        'ga': GeneticAlgorithm(surrogate, pop_size=config["optimizer"]["pop_size"], generations=config["optimizer"]["generations"], mutation_rate=config["optimizer"]["mutation_rate"], crossover_rate=config["optimizer"]["crossover_rate"], seed=config["optimizer"]["seed"]),
-        'ge': GrammaticalEvolution(surrogate, pop_size=config["optimizer"]["pop_size"], generations=config["optimizer"]["generations"], mutation_rate=config["optimizer"]["mutation_rate"], crossover_rate=config["optimizer"]["crossover_rate"], seed=config["optimizer"]["seed"]),
+        'ga': GeneticAlgorithm(surrogate, pop_size=config["optimizer"]["pop_size"], generations=config["optimizer"]["generations"], mutation_rate=config["optimizer"]["mutation_rate"], crossover_rate=config["optimizer"]["crossover_rate"], seed=config["optimizer"]["seed"], logger=opt_logger),
+        'ge': GrammaticalEvolution(surrogate, pop_size=config["optimizer"]["pop_size"], generations=config["optimizer"]["generations"], mutation_rate=config["optimizer"]["mutation_rate"], crossover_rate=config["optimizer"]["crossover_rate"], seed=config["optimizer"]["seed"], logger=opt_logger),
         # 'cell_ga': CellBasedGeneticAlgorithm(), # Not tested
         # 'cell_ge': CellBasedGrammaticalEvolution(), # Not implimented fully
     }

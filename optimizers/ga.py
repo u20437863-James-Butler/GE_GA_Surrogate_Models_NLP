@@ -2,6 +2,7 @@ import random
 import numpy as np
 import sys
 import os
+import time
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 try:
     from optimizer import Optimizer
@@ -12,7 +13,7 @@ except ImportError:
     from ga_individual import GA_Individual
 
 class GeneticAlgorithm(Optimizer):
-    def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, seed=None):
+    def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, seed=None, logger=None):
         """
         Initialize the Genetic Algorithm with a surrogate model for fitness evaluation.
         
@@ -22,6 +23,8 @@ class GeneticAlgorithm(Optimizer):
             generations: Number of generations to evolve
             mutation_rate: Probability of mutation for each gene
             crossover_rate: Probability of crossover between parents
+            seed: Random seed for reproducibility
+            logger: Logger instance for tracking results
         """
         self.surrogate = surrogate
         self.pop_size = pop_size
@@ -29,6 +32,7 @@ class GeneticAlgorithm(Optimizer):
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.seed = seed
+        self.logger = logger
 
         # Track for early stopping
         self.patience = 3
@@ -237,8 +241,21 @@ class GeneticAlgorithm(Optimizer):
             self.current_generation = gen
             print(f"\nGeneration {gen+1}/{self.generations}")
             
+            # Start timing this generation if logger is available
+            if self.logger:
+                self.logger.start_generation()
+            
             # Evaluate current population
             self.evaluate_population()
+            
+            # Log this generation if logger is available
+            if self.logger:
+                self.logger.log_generation(
+                    generation=gen+1,
+                    best_fitness=-self.surrogate.best_perplexity,
+                    best_perplexity=self.surrogate.best_perplexity,
+                    best_architecture=str(self.best_individual)
+                )
             
             # Check early stopping criteria
             if self.gens_since_last_improvement == self.patience:
@@ -273,16 +290,35 @@ class GeneticAlgorithm(Optimizer):
             print(f"Best fitness: {-self.surrogate.best_perplexity:.5f} (perplexity: {self.surrogate.best_perplexity:.2f})")
         
         if early_stopping_flag:
-            print("\nStopped early at generation:",self.current_generation+1)
+            print("\nStopped early at generation:", self.current_generation+1)
         else:
             # Final evaluation
             self.current_generation = self.generations
             print("\nFinal evaluation")
+            
+            # Start timing final evaluation if logger is available
+            if self.logger:
+                self.logger.start_generation()
+                
             self.evaluate_population()
+            
+            # Log final generation if logger is available
+            if self.logger:
+                self.logger.log_generation(
+                    generation=self.current_generation+1,
+                    best_fitness=-self.surrogate.best_perplexity,
+                    best_perplexity=self.surrogate.best_perplexity,
+                    best_architecture=str(self.best_individual)
+                )
         
         print(f"\nEvolution complete!")
-        # print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
-        # print(f"Best architecture: {self.best_individual}")
-        # print(f"Best fitness: {self.best_individual.fitness}")
+        # Log final results if logger is available
+        if self.logger:
+            self.logger.log_final_results(
+                best_individual=self.best_individual,
+                best_perplexity=self.surrogate.best_perplexity,
+                total_generations=self.current_generation+1
+            )
+            
         self.best_individual.fitness = -self.surrogate.best_perplexity
         return self.best_individual

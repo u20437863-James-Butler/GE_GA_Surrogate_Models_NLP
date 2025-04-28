@@ -177,7 +177,7 @@ class FullTrainer:
                     is_best = "✓"
                 
                 # Format the output
-                print(f"Epoch {epoch+1}/{self.num_epochs}: "
+                print(f"\nEpoch {epoch+1}/{self.num_epochs}: "
                     f"loss={train_loss:.4f} ({train_ppl:.2f}), "
                     f"val_loss={val_loss:.4f} ({val_ppl:.2f}) "
                     f"{is_best} [{time_elapsed:.1f}s]")
