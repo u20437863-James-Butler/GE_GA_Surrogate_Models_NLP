@@ -273,7 +273,8 @@ class GeneticAlgorithm(Optimizer):
             self.evaluate_population()
         
         print(f"\nEvolution complete!")
-        print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
-        print(f"Best architecture: {self.best_individual}")
-        print(f"Best fitness: {self.best_individual.fitness}")
+        # print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
+        # print(f"Best architecture: {self.best_individual}")
+        # print(f"Best fitness: {self.best_individual.fitness}")
+        self.best_individual.fitness = -self.surrogate.best_perplexity
         return self.best_individual

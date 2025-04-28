@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import time
 import os
@@ -12,19 +11,19 @@ class Evaluator:
     evolutionary optimizer to find optimal neural architectures.
     """
     
-    def __init__(self, surrogate, optimizer, max_evaluations=100, log_interval=10):
+    def __init__(self, surrogate, optimizer, max_runs=10, log_interval=11):
         """
         Initialize the evaluator.
         
         Args:
             surrogate: A surrogate model that evaluates individuals
             optimizer: An evolutionary algorithm optimizer
-            max_evaluations: Maximum number of evaluations to perform
+            max_runs: Maximum number of runs to perform
             log_interval: How often to log progress
         """
         self.surrogate = surrogate
         self.optimizer = optimizer
-        self.max_evaluations = max_evaluations
+        self.max_runs = max_runs
         self.log_interval = log_interval
         
         # Get dataset input shape and output dimensions from surrogate
@@ -36,7 +35,7 @@ class Evaluator:
         self.best_individual = None
         self.fitness_history = []
         self.best_fitness_history = []
-        self.evaluation_count = 0
+        self.run_count = 0
         self.start_time = None
         
     def configure_optimizer(self):
@@ -49,7 +48,7 @@ class Evaluator:
     def evaluate_individual(self, individual):
         """Evaluate a single individual using the surrogate model"""
         fitness = self.surrogate.evaluate(individual)
-        self.evaluation_count += 1
+        self.run_count += 1
         
         # Track best individual
         if fitness > self.best_fitness:
@@ -60,10 +59,10 @@ class Evaluator:
         self.best_fitness_history.append(self.best_fitness)
         
         # Log progress
-        if self.evaluation_count % self.log_interval == 0:
+        if self.run_count % self.log_interval == 0:
             elapsed = time.time() - self.start_time
             perplexity = -self.best_fitness  # Convert fitness back to perplexity
-            print(f"Eval: {self.evaluation_count}/{self.max_evaluations} | "
+            print(f"Run: {self.run_count}/{self.max_runs} | "
                   f"Best Perplexity: {perplexity:.2f} | "
                   f"Time: {elapsed:.1f}s")
             
@@ -73,7 +72,7 @@ class Evaluator:
         """Run the neural architecture search experiment"""
         print(f"Starting neural architecture search with {self.optimizer.__class__.__name__}")
         print(f"Surrogate model: {self.surrogate.__class__.__name__}")
-        print(f"Max evaluations: {self.max_evaluations}")
+        print(f"Max runs: {self.max_runs}")
         
         self.start_time = time.time()
         self.configure_optimizer()
@@ -93,13 +92,10 @@ class Evaluator:
         perplexity = -self.best_fitness
         
         print("\nNeural Architecture Search Complete")
-        print(f"Total evaluations: {self.evaluation_count}")
+        print(f"Total runs: {self.run_count}")
         print(f"Best validation perplexity: {perplexity:.2f}")
         print(f"Total time: {elapsed:.1f}s")
         print(f"Best architecture: {self.best_individual.__dict__}")
-        
-        # Plot progress
-        self.plot_progress()
         
         return self.best_individual
     
@@ -107,38 +103,17 @@ class Evaluator:
         """Evaluate an entire population using the surrogate model"""
         fitnesses = []
         for individual in population:
-            # Respect evaluation limit
-            if self.evaluation_count >= self.max_evaluations:
+            # Respect run limit
+            if self.run_count >= self.max_runs:
                 break
                 
             fitness = self.evaluate_individual(individual)
             fitnesses.append(fitness)
             
         return fitnesses
-    
-    def plot_progress(self):
-        """Plot optimization progress"""
-        plt.figure(figsize=(10, 6))
-        
-        # Convert fitness back to perplexity for plotting
-        perplexity_history = [-fitness for fitness in self.fitness_history]
-        best_perplexity_history = [-fitness for fitness in self.best_fitness_history]
-        
-        plt.plot(perplexity_history, 'o', alpha=0.3, label='Individual Perplexity')
-        plt.plot(best_perplexity_history, '-', label='Best Perplexity')
-        
-        plt.xlabel('Evaluation')
-        plt.ylabel('Validation Perplexity (lower is better)')
-        plt.title('Neural Architecture Search Progress')
-        plt.legend()
-        plt.grid(True)
-        
-        # Save plot
-        os.makedirs('results', exist_ok=True)
-        plt.savefig('results/nas_progress.png')
-        plt.close()
 
-def run_experiment(dataset, surrogate, optimizer, max_evaluations=100):
+
+def run_experiment(dataset, surrogate, optimizer, max_runs=10):
     """
     Run a neural architecture search experiment.
     
@@ -146,10 +121,10 @@ def run_experiment(dataset, surrogate, optimizer, max_evaluations=100):
         dataset: Dataset to use for training/evaluation
         surrogate: Surrogate model for fitness evaluation
         optimizer: Evolutionary algorithm to use
-        max_evaluations: Maximum number of evaluations to perform
+        max_runs: Maximum number of runs to perform
         
     Returns:
         best_individual: The best architecture found
     """
-    evaluator = Evaluator(surrogate, optimizer, max_evaluations)
+    evaluator = Evaluator(surrogate, optimizer, max_runs)
     return evaluator.run()

@@ -85,7 +85,7 @@ def test_ga_evolution():
     print("\nRunning GA evolution...")
     best_individual = ga.evolve()
     
-    print("\nEvolution completed!")
+    # print("\nEvolution completed!")
     print(f"Best individual: {best_individual}")
     print(f"Best fitness: {best_individual.fitness:.4f}")
     
@@ -126,7 +126,7 @@ def test_ge_evolution():
     print("\nRunning GE evolution...")
     best_individual = ge.evolve()
     
-    print("\nEvolution completed!")
+    # print("\nEvolution completed!")
     print(f"Best individual: {best_individual}")
     print(f"Best fitness: {best_individual.fitness:.4f}")
     
