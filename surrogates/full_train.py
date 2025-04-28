@@ -152,9 +152,12 @@ class FullTrainer:
                 self.start_time = None
                 self.best_perplexity = float('inf')
                 self.best_epoch = 0
+                self.num_epochs = None  # Will be set in on_train_begin
             
             def on_train_begin(self, logs=None):
                 self.start_time = time.time()
+                # Get total epochs from the params dictionary
+                self.num_epochs = self.params['epochs']
             
             def on_epoch_end(self, epoch, logs=None):
                 logs = logs or {}
@@ -174,9 +177,9 @@ class FullTrainer:
                     is_best = "✓"
                 
                 # Format the output
-                print(f"Epoch {epoch+1}/{self.model.epochs}: "
-                      f"loss={train_loss:.4f} ({train_ppl:.2f}), "
-                      f"val_loss={val_loss:.4f} ({val_ppl:.2f}) "
-                      f"{is_best} [{time_elapsed:.1f}s]")
+                print(f"Epoch {epoch+1}/{self.num_epochs}: "
+                    f"loss={train_loss:.4f} ({train_ppl:.2f}), "
+                    f"val_loss={val_loss:.4f} ({val_ppl:.2f}) "
+                    f"{is_best} [{time_elapsed:.1f}s]")
         
         return FullTrainingCallback(individual_id, seed, architecture)

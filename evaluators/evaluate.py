@@ -29,12 +29,14 @@ class Evaluator:
             max_runs: Maximum number of runs to perform
             log_interval: How often to log progress
             full_runs: How many epochs to train the run results for
+            logger: Logger object to record results
         """
         self.optimizer = optimizer
         self.dataset = dataset  # Store dataset for full training
         self.max_runs = max_runs
         self.log_interval = log_interval
         self.full_runs = full_runs
+        self.logger = logger
         
         # Metrics tracking
         self.best_fitness = float('-inf')  # Higher is better
@@ -81,12 +83,20 @@ class Evaluator:
             print(f"\nRunning full training for the best individual from run {self.run_count + 1}")
             print(f"Individual fitness from evolutionary search: {individual.fitness:.4f}")
             result = self.run_full_training(individual)
-            self.full_training_results.append({
+            
+            # Store results with timing information
+            run_result = {
                 'run': self.run_count + 1,
                 'individual': individual,
                 'fitness': individual.fitness,
-                'full_training_result': result
-            })
+                'full_training_result': result,
+                'time': run_elapsed
+            }
+            self.full_training_results.append(run_result)
+            
+            # Log results to CSV if logger is provided
+            if self.logger:
+                self.logger.log_run(self.run_count + 1, run_result)
             
             # Log progress at specified intervals
             if (self.run_count + 1) % self.log_interval == 0:
@@ -110,6 +120,10 @@ class Evaluator:
             print(f"{result['run']:<5} {result['fitness']:<15.4f} {result['full_training_result']['val_perplexity']}")
         
         print(f"\nBest architecture: {self.best_individual}")
+        
+        # Log final results if logger is provided
+        if self.logger:
+            self.logger.log_final_results(self.best_individual, self.full_training_results, total_elapsed)
             
         return self.best_individual, self.full_training_results
     
@@ -125,4 +139,4 @@ class Evaluator:
         """
         print(f"\nStarting full training of architecture...")        
         full_trainer = FullTrainer(self.dataset, num_epochs=self.full_runs)
-        return -full_trainer.evaluate(individual)
+        return full_trainer.evaluate(individual)

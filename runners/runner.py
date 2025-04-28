@@ -112,9 +112,9 @@ def main():
         # 'cell_ge': CellBasedGrammaticalEvolution(), # Not implimented fully
     }
     optimizer = supported_optimizers[config["optimizer"]["name"]]
-
+    logger = Logger(config)
     supported_evaluators = {
-        'base': Evaluator(optimizer, dataset, max_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], full_runs=config["evaluator"]["full_runs"], Logger(config)),
+        'base': Evaluator(optimizer, dataset, max_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], full_runs=config["evaluator"]["full_runs"], logger=logger),
         # 'surrogate': SurrEvaluator(optimizer, num_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], starter_seed=config["evaluator"]["starter_seed"])
     }
     evaluator = supported_evaluators[config["evaluator"]["name"]]
