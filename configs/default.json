@@ -5,24 +5,25 @@
         "batch_size": 20
     },
     "surrogate": {
-        "name": "mt",
+        "name": "smt",
         "num_epochs": 1,
         "batch_size": 2048,
         "verbose": 1
     },
     "optimizer": {
-        "name": "ge",
-        "pop_size": 1,
-        "generations": 10,
+        "name": "ga",
+        "pop_size": 3,
+        "generations": 2,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
         "seed": 41
     },
     "evaluator": {
-        "name": "surrogate",
+        "name": "base",
         "num_runs": 2,
         "log_interval": 1,
-        "starter_seed": 42
+        "starter_seed": 42,
+        "full_runs": 2
     },
     "experiment": {
         "description": "Default experiment configuration",

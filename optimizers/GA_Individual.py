@@ -3,7 +3,14 @@ import numpy as np
 from tensorflow import keras
 from keras import layers
 import hashlib
-from optimizers.individual import Individual
+import sys
+import os
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from individual import Individual
+except ImportError:
+    sys.path.append(os.path.join(parent_dir, 'optimizers'))
+    from individual import Individual
 
 class GA_Individual(Individual):
     def __init__(self, seed=None, layer_counts=None, rnn_types=None, units=None, activations=None, dropout=None):

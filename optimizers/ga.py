@@ -1,7 +1,15 @@
 import random
 import numpy as np
-from optimizers.optimizer import Optimizer
-from optimizers.ga_individual import GA_Individual
+import sys
+import os
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from optimizer import Optimizer
+    from ga_individual import GA_Individual
+except ImportError:
+    sys.path.append(os.path.join(parent_dir, 'optimizers'))
+    from optimizer import Optimizer
+    from ga_individual import GA_Individual
 
 class GeneticAlgorithm(Optimizer):
     def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, seed=None):

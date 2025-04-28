@@ -2,8 +2,16 @@ import random
 import numpy as np
 from tensorflow import keras
 from keras import Sequential, layers
-from optimizers.optimizer import Optimizer
-from optimizers.ge_individual import GE_Individual
+import sys
+import os
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from optimizer import Optimizer
+    from ge_individual import GE_Individual
+except ImportError:
+    sys.path.append(os.path.join(parent_dir, 'optimizers'))
+    from optimizer import Optimizer
+    from ge_individual import GE_Individual
 
 class GrammaticalEvolution(Optimizer):
     def __init__(self, surrogate, pop_size=20, generations=10, mutation_rate=0.2, crossover_rate=0.7, max_genotype_length=8, seed=None):
@@ -29,8 +37,6 @@ class GrammaticalEvolution(Optimizer):
         self.gens_since_last_improvement = 0
         self.current_generation = 0
 
-        self.population = self.generate_population(seed=self.seed)
-
         # Track best individual and fitness
         self.best_individual = None
         self.best_fitness = float('-inf')  # Higher fitness is better
@@ -45,6 +51,8 @@ class GrammaticalEvolution(Optimizer):
             '<activation>': ["relu", "tanh", "sigmoid"],
             '<dropout>': [str(u * 0.01) for u in range(0, 91, 10)]
         }
+
+        self.population = self.generate_population(seed=self.seed)
 
         # Get input shape and output dim from surrogate
         self.input_shape = surrogate.input_shape
@@ -65,6 +73,9 @@ class GrammaticalEvolution(Optimizer):
             np.random.seed(seed)
             
         self.population = [GE_Individual(seed=self.seed+i) for i in range(self.pop_size)]
+        for i in self.population:
+            phenotype = self.genotype_to_phenotype(i.genotype)
+            i.setPhenotype(phenotype)
         return self.population
     
     def evaluate_only(self, population=None, seed=None, base_log_filename=None):

@@ -118,9 +118,6 @@ def test_ge_evolution():
     print("\nInitial population:")
     for i, ind in enumerate(population):
         print(f"Individual {i}: {ind}")
-        # Initialize phenotypes
-        phenotype = ge.genotype_to_phenotype(ind.genotype)
-        ind.setPhenotype(phenotype)
     
     # Run evolution
     print("\nRunning GE evolution...")

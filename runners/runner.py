@@ -28,14 +28,14 @@ except ImportError:
 
 # For surrogates imports
 try:
-    from surrogates.mintrain import MinTrainSurrogate
+    # from surrogates.mintrain import MinTrainSurrogate
     from surrogates.mintrain_surrogate import SimplifiedMinTrainSurrogate
     # from surrogates.full_train import FullTrainSurrogate
     # from surrogates.random_forest import RandomForestSurrogate
 except ImportError:
     print("Could not import surrogates directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'surrogates'))
-    from mintrain import MinTrainSurrogate
+    # from mintrain import MinTrainSurrogate
     from mintrain_surrogate import SimplifiedMinTrainSurrogate
     # from full_train import FullTrainSurrogate
     # from random_forest import RandomForestSurrogate
@@ -56,13 +56,13 @@ except ImportError:
 
 # For evaluators imports
 try:
-    # from evaluators.evaluate import Evaluator
-    from evaluators.surrogate_evaluator import SurrEvaluator
+    from evaluators.evaluate import Evaluator
+    # from evaluators.surrogate_evaluator import SurrEvaluator
 except ImportError:
     print("Could not import evaluators directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'evaluators'))
-    # from evaluate import Evaluator
-    from surrogate_evaluator import SurrEvaluator
+    from evaluate import Evaluator
+    # from surrogate_evaluator import SurrEvaluator
 
 # For config imports
 try:
@@ -100,8 +100,8 @@ def main():
 
     supported_surrogates = {
         # 'base': FullTrainSurrogate(dataset, max_epochs=50, batch_size=128, patience=5, verbose=1),
-        'mt': MinTrainSurrogate(dataset, dataset_name=config["dataset"]["name"], num_epochs=config["surrogate"]["num_epochs"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"]),
-        'smt': SimplifiedMinTrainSurrogate(dataset, num_epochs=config["surrogate"]["num_epoch"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"])
+        # 'mt': MinTrainSurrogate(dataset, dataset_name=config["dataset"]["name"], num_epochs=config["surrogate"]["num_epochs"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"]),
+        'smt': SimplifiedMinTrainSurrogate(dataset, num_epochs=config["surrogate"]["num_epochs"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"])
         # 'rf': RandomForestSurrogate(dataset, initial_models=30, train_epochs=5, retrain_interval=20, verbose=1),
     }
     surrogate = supported_surrogates[config["surrogate"]["name"]]
@@ -115,14 +115,14 @@ def main():
     optimizer = supported_optimizers[config["optimizer"]["name"]]
 
     supported_evaluators = {
-        # 'base': Evaluator(optimizer, max_evaluations=5, log_interval=5),
-        'surrogate': SurrEvaluator(optimizer, num_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], starter_seed=config["evaluator"]["starter_seed"])
+        'base': Evaluator(optimizer, dataset, max_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], full_runs=config["evaluator"]["full_runs"]),
+        # 'surrogate': SurrEvaluator(optimizer, num_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], starter_seed=config["evaluator"]["starter_seed"])
     }
     evaluator = supported_evaluators[config["evaluator"]["name"]]
 
     # Run experiment
     print(f"Running NAS experiment with {config['dataset']['name']} dataset using {config['surrogate']['name']} surrogate and {config['optimizer']['name']} optimizer")
-    best_individual = evaluator.run()
+    best_individual,  = evaluator.run(config["evaluator"]["starter_seed"])
     return best_individual
 
 if __name__ == "__main__":

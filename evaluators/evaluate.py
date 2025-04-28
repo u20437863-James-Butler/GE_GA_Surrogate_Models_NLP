@@ -2,6 +2,13 @@ import numpy as np
 import tensorflow as tf
 import time
 import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+try:
+    from surrogates.full_train import FullTrainer
+except ImportError:
+    sys.path.append(os.path.join(parent_dir, 'surrogates'))
+    from full_train import FullTrainer
 
 class Evaluator:
     """
@@ -11,24 +18,23 @@ class Evaluator:
     evolutionary optimizer to find optimal neural architectures.
     """
     
-    def __init__(self, surrogate, optimizer, max_runs=10, log_interval=11):
+    def __init__(self, optimizer, dataset, max_runs=10, log_interval=1, full_runs=40):
         """
         Initialize the evaluator.
         
         Args:
             surrogate: A surrogate model that evaluates individuals
             optimizer: An evolutionary algorithm optimizer
+            dataset: Dataset to use for training/evaluation
             max_runs: Maximum number of runs to perform
             log_interval: How often to log progress
+            full_runs: How many epochs to train the run results for
         """
-        self.surrogate = surrogate
         self.optimizer = optimizer
+        self.dataset = dataset  # Store dataset for full training
         self.max_runs = max_runs
         self.log_interval = log_interval
-        
-        # Get dataset input shape and output dimensions from surrogate
-        self.input_shape = surrogate.input_shape
-        self.output_dim = surrogate.output_dim
+        self.full_runs = full_runs
         
         # Metrics tracking
         self.best_fitness = float('-inf')  # Higher is better
@@ -36,95 +42,87 @@ class Evaluator:
         self.fitness_history = []
         self.best_fitness_history = []
         self.run_count = 0
-        self.start_time = None
         
-    def configure_optimizer(self):
-        """Configure the optimizer with dataset parameters"""
-        if not hasattr(self.optimizer, 'input_shape'):
-            self.optimizer.input_shape = self.input_shape
-        if not hasattr(self.optimizer, 'output_dim'):
-            self.optimizer.output_dim = self.output_dim
-            
-    def evaluate_individual(self, individual):
-        """Evaluate a single individual using the surrogate model"""
-        fitness = self.surrogate.evaluate(individual)
-        self.run_count += 1
+        # Track all full training results
+        self.full_training_results = []
         
-        # Track best individual
-        if fitness > self.best_fitness:
-            self.best_fitness = fitness
-            self.best_individual = individual.copy()
-            
-        self.fitness_history.append(fitness)
-        self.best_fitness_history.append(self.best_fitness)
-        
-        # Log progress
-        if self.run_count % self.log_interval == 0:
-            elapsed = time.time() - self.start_time
-            perplexity = -self.best_fitness  # Convert fitness back to perplexity
-            print(f"Run: {self.run_count}/{self.max_runs} | "
-                  f"Best Perplexity: {perplexity:.2f} | "
-                  f"Time: {elapsed:.1f}s")
-            
-        return fitness
-        
-    def run(self):
+    def run(self, seed):
         """Run the neural architecture search experiment"""
         print(f"Starting neural architecture search with {self.optimizer.__class__.__name__}")
-        print(f"Surrogate model: {self.surrogate.__class__.__name__}")
         print(f"Max runs: {self.max_runs}")
         
-        self.start_time = time.time()
-        self.configure_optimizer()
+        total_start_time = time.time()
         
-        # Replace direct evaluation in optimizer with surrogate evaluation
-        self.original_evaluate_population = self.optimizer.evaluate_population
-        self.optimizer.evaluate_population = self.evaluate_population
-        
-        # Run the optimizer
-        best = self.optimizer.evolve()
-        
-        # Restore original method
-        self.optimizer.evaluate_population = self.original_evaluate_population
-        
-        # Report final results
-        elapsed = time.time() - self.start_time
-        perplexity = -self.best_fitness
-        
-        print("\nNeural Architecture Search Complete")
-        print(f"Total runs: {self.run_count}")
-        print(f"Best validation perplexity: {perplexity:.2f}")
-        print(f"Total time: {elapsed:.1f}s")
-        print(f"Best architecture: {self.best_individual.__dict__}")
-        
-        return self.best_individual
-    
-    def evaluate_population(self, population):
-        """Evaluate an entire population using the surrogate model"""
-        fitnesses = []
-        for individual in population:
-            # Respect run limit
-            if self.run_count >= self.max_runs:
-                break
-                
-            fitness = self.evaluate_individual(individual)
-            fitnesses.append(fitness)
+        for self.run_count in range(self.max_runs):
+            start_time = time.time()
+            print(f"\n{'='*50}")
+            print(f"Run {self.run_count + 1}/{self.max_runs}")
+            print(f"{'='*50}")
+            print("Generating initial population...")
+            self.optimizer.population = self.optimizer.generate_population(seed=seed + self.run_count)
             
-        return fitnesses
-
-
-def run_experiment(dataset, surrogate, optimizer, max_runs=10):
-    """
-    Run a neural architecture search experiment.
-    
-    Args:
-        dataset: Dataset to use for training/evaluation
-        surrogate: Surrogate model for fitness evaluation
-        optimizer: Evolutionary algorithm to use
-        max_runs: Maximum number of runs to perform
+            # Get the best individual from this run
+            individual = self.optimizer.evolve()
+            
+            # Update overall best individual if needed
+            if individual.fitness > self.best_fitness:
+                self.best_fitness = individual.fitness
+                self.best_individual = individual
+                print(f"New overall best fitness: {self.best_fitness:.4f}")
+            
+            # Update history
+            self.fitness_history.append(individual.fitness)
+            self.best_fitness_history.append(self.best_fitness)
+            
+            run_elapsed = time.time() - start_time
+            print(f"Run {self.run_count + 1} of search completed in {run_elapsed:.1f}s")
+            
+            # Run full training on this run's best individual
+            print(f"\nRunning full training for the best individual from run {self.run_count + 1}")
+            print(f"Individual fitness from evolutionary search: {individual.fitness:.4f}")
+            result = self.run_full_training(individual)
+            self.full_training_results.append({
+                'run': self.run_count + 1,
+                'individual': individual,
+                'fitness': individual.fitness,
+                'full_training_result': result
+            })
+            
+            # Log progress at specified intervals
+            if (self.run_count + 1) % self.log_interval == 0:
+                print(f"\nProgress: {self.run_count + 1}/{self.max_runs} runs completed")
+                print(f"Current overall best fitness: {self.best_fitness:.4f}")
         
-    Returns:
-        best_individual: The best architecture found
-    """
-    evaluator = Evaluator(surrogate, optimizer, max_runs)
-    return evaluator.run()
+        total_elapsed = time.time() - total_start_time
+        
+        print("\n" + "="*70)
+        print("Neural Architecture Search Complete")
+        print("="*70)
+        print(f"Total runs: {self.run_count + 1}")
+        print(f"Best fitness from evolutionary search: {self.best_fitness:.4f}")
+        print(f"Total time: {total_elapsed:.1f}s")
+        
+        # Print summary of all runs
+        print("\nSummary of all runs:")
+        print(f"{'Run':<5} {'Evo Fitness':<15} {'Full Training Val Perplexity'}")
+        print("-" * 50)
+        for result in self.full_training_results:
+            print(f"{result['run']:<5} {result['fitness']:<15.4f} {result['full_training_result']['val_perplexity']}")
+        
+        print(f"\nBest architecture: {self.best_individual}")
+            
+        return self.best_individual, self.full_training_results
+    
+    def run_full_training(self, individual):
+        """
+        Run full training on an individual.
+        
+        Args:
+            individual: The individual to train
+        
+        Returns:
+            dict: Results from full training
+        """
+        print(f"\nStarting full training of architecture...")        
+        full_trainer = FullTrainer(self.dataset, num_epochs=self.full_runs)
+        return -full_trainer.evaluate(individual)
