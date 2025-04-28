@@ -1,17 +1,16 @@
 import os
 import sys
 import argparse
-import logging
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-# # Set up logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#     handlers=[logging.StreamHandler()]
-# )
-# logger = logging.getLogger(__name__)
+# For loggers imports
+try:
+    from logs.basic_logger import Logger
+except ImportError:
+    print("Could not import datasets directly. Trying alternative import method...")
+    sys.path.append(os.path.join(parent_dir, 'logs'))
+    from basic_logger import Logger
 
 # For datasets imports
 try:
@@ -115,7 +114,7 @@ def main():
     optimizer = supported_optimizers[config["optimizer"]["name"]]
 
     supported_evaluators = {
-        'base': Evaluator(optimizer, dataset, max_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], full_runs=config["evaluator"]["full_runs"]),
+        'base': Evaluator(optimizer, dataset, max_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], full_runs=config["evaluator"]["full_runs"], Logger(config)),
         # 'surrogate': SurrEvaluator(optimizer, num_runs=config["evaluator"]["num_runs"], log_interval=config["evaluator"]["log_interval"], starter_seed=config["evaluator"]["starter_seed"])
     }
     evaluator = supported_evaluators[config["evaluator"]["name"]]

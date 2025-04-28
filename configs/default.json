@@ -7,7 +7,7 @@
     "surrogate": {
         "name": "smt",
         "num_epochs": 1,
-        "batch_size": 2048,
+        "batch_size": 512,
         "verbose": 1
     },
     "optimizer": {
@@ -27,7 +27,6 @@
     },
     "experiment": {
         "description": "Default experiment configuration",
-        "save_results": true,
-        "results_dir": "../results"
+        "save_results": true
     }
 }

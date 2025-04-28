@@ -18,7 +18,7 @@ class Evaluator:
     evolutionary optimizer to find optimal neural architectures.
     """
     
-    def __init__(self, optimizer, dataset, max_runs=10, log_interval=1, full_runs=40):
+    def __init__(self, optimizer, dataset, max_runs=10, log_interval=1, full_runs=40, logger=None):
         """
         Initialize the evaluator.
         
