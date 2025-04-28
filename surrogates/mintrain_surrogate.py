@@ -152,7 +152,7 @@ class SimplifiedMinTrainSurrogate:
             float: Fitness score (negative perplexity, higher is better)
         """
         # Get individual ID
-        individual_id = individual.getId() if hasattr(individual, 'getId') else str(id(individual))
+        individual_id = individual.getGenericId() if hasattr(individual, 'getId') else str(id(individual))
         
         # Check if individual is in cache
         if individual_id in self.fitness_cache:

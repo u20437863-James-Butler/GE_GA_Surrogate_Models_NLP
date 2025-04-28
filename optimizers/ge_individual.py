@@ -85,6 +85,17 @@ class GE_Individual(Individual):
     def getIdLong(self):
         """Generate a unique long ID based on the individual's architecture."""
         return self.id
+    
+    def getGenericId(self):
+        """String representation of the individual."""
+        return (
+            f"Individual("
+            f"layers={self.architecture['layer_counts']}, "
+            f"units={self.architecture['units']}, "
+            f"activations={self.architecture['activations']}, "
+            f"dropout={self.architecture['dropout']:.3f}, "
+            f"seed={self.seed})"
+        )
 
     def copy(self):
         """Creates a deep copy of the individual."""

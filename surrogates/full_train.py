@@ -50,7 +50,7 @@ class FullTrainer:
         
         # Get individual architecture (shorter summary)
         architecture = str(individual) if hasattr(individual, '__str__') else None
-        arch_summary = architecture[:100] + '...' if architecture and len(architecture) > 100 else architecture
+        arch_summary = architecture[:200] + '...' if architecture and len(architecture) > 200 else architecture
         
         print(f"\n{'='*50}")
         print(f"FULL TRAINING OF BEST ARCHITECTURE")

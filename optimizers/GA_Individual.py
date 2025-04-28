@@ -50,6 +50,17 @@ class GA_Individual(Individual):
             f"S{self.seed}"
         )
         return id_string
+    
+    def getGenericId(self):
+        """String representation of the individual without id."""
+        return (
+            f"Individual("
+            f"layers={self.layer_counts}, "
+            f"units={self.units}, "
+            f"activations={self.activations}, "
+            f"dropout={self.dropout:.3f}, "
+            f"seed={self.seed})"
+        )
 
     def copy(self):
         """Creates a deep copy of the individual."""
