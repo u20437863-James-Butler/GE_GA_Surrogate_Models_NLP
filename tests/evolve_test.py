@@ -12,11 +12,17 @@ sys.path.append(parent_dir)
 try:
     from optimizers.ga import GeneticAlgorithm
     from optimizers.ge import GrammaticalEvolution
+    from surrogates.mintrain_surrogate import SimplifiedMinTrainSurrogate
+    from datasets.ptb import get_ptb_dataset
 except ImportError:
     print("Could not import optimizers directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'optimizers'))
     from ga import GeneticAlgorithm
     from ge import GrammaticalEvolution
+    sys.path.append(os.path.join(parent_dir, 'surrogates'))
+    from mintrain_surrogate import SimplifiedMinTrainSurrogate
+    sys.path.append(os.path.join(parent_dir, 'datasets'))
+    from ptb import get_ptb_dataset
 
 class SimpleSurrogate:
     """A simple surrogate model that assigns fitness based on the sum of ASCII values in the ID."""
@@ -55,8 +61,8 @@ def test_ga_evolution():
     print("\n========== Testing Genetic Algorithm Evolution ==========")
     
     # Create simple surrogate
-    surrogate = SimpleSurrogate()
-    
+    # surrogate = SimpleSurrogate()
+    surrogate = SimplifiedMinTrainSurrogate(get_ptb_dataset(seq_length=35, batch_size=20))
     # Create GA optimizer with small population and generations
     ga = GeneticAlgorithm(
         surrogate=surrogate,

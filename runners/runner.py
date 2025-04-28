@@ -29,12 +29,14 @@ except ImportError:
 # For surrogates imports
 try:
     from surrogates.mintrain import MinTrainSurrogate
+    from surrogates.mintrain_surrogate import SimplifiedMinTrainSurrogate
     # from surrogates.full_train import FullTrainSurrogate
     # from surrogates.random_forest import RandomForestSurrogate
 except ImportError:
     print("Could not import surrogates directly. Trying alternative import method...")
     sys.path.append(os.path.join(parent_dir, 'surrogates'))
     from mintrain import MinTrainSurrogate
+    from mintrain_surrogate import SimplifiedMinTrainSurrogate
     # from full_train import FullTrainSurrogate
     # from random_forest import RandomForestSurrogate
 
@@ -99,6 +101,7 @@ def main():
     supported_surrogates = {
         # 'base': FullTrainSurrogate(dataset, max_epochs=50, batch_size=128, patience=5, verbose=1),
         'mt': MinTrainSurrogate(dataset, dataset_name=config["dataset"]["name"], num_epochs=config["surrogate"]["num_epochs"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"]),
+        'smt': SimplifiedMinTrainSurrogate(dataset, num_epochs=config["surrogate"]["num_epoch"], batch_size=config["surrogate"]["batch_size"], verbose=config["surrogate"]["verbose"])
         # 'rf': RandomForestSurrogate(dataset, initial_models=30, train_epochs=5, retrain_interval=20, verbose=1),
     }
     surrogate = supported_surrogates[config["surrogate"]["name"]]
