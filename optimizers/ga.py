@@ -98,6 +98,7 @@ class GeneticAlgorithm(Optimizer):
             if individual.fitness > self.best_fitness:
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()
+                self.best_individual.fitness = self.best_fitness
                 self.gens_since_last_improvement = 0
             else:
                 self.gens_since_last_improvement += 1
@@ -123,25 +124,41 @@ class GeneticAlgorithm(Optimizer):
             Individual: New child individual
         """
         if random.random() > self.crossover_rate:
-            return random.choice([parent1.copy(),parent2.copy()])
+            return random.choice([parent1.copy(), parent2.copy()])
         
         # Create new child with shared seed for weight consistency
-        child_seed = random.choice([parent1.seed,parent2.seed])
+        child_seed = random.choice([parent1.seed, parent2.seed])
         
         # Choose layer count from either parent
         layer_counts = random.choice([parent1.layer_counts, parent2.layer_counts])
         
-        # Build layers from each parent
+        # Build units and activations from each parent with proper padding
         units = []
         activations = []
+        
         for i in range(layer_counts):
-            # Pad with unit 16 and activation tabh if a parent's layer count is too small
-            units.append(random.choice([parent1,parent2]).units[i])
-            units.append(random.choice([parent1,parent2]).activations[i])
+            # Select parent to get unit from
+            parent_for_unit = random.choice([parent1, parent2])
+            # Select parent to get activation from
+            parent_for_activation = random.choice([parent1, parent2])
+            
+            # Get unit with padding if needed
+            if i < len(parent_for_unit.units):
+                units.append(parent_for_unit.units[i])
+            else:
+                # Padding with default value if parent doesn't have enough layers
+                units.append(16)  # Default unit size
+                
+            # Get activation with padding if needed
+            if i < len(parent_for_activation.activations):
+                activations.append(parent_for_activation.activations[i])
+            else:
+                # Padding with default value if parent doesn't have enough layers
+                activations.append('tanh')  # Default activation
         
         # Ensure last layer has return_sequences=False if there are multiple layers
         return_sequences = [True] * (layer_counts - 1) + [False]
-
+        
         dropout = random.choice([parent1.dropout, parent2.dropout])
         
         # Create child
@@ -150,7 +167,6 @@ class GeneticAlgorithm(Optimizer):
             layer_counts=layer_counts,
             units=units,
             activations=activations,
-            return_sequences=return_sequences,
             dropout=dropout
         )
         
@@ -246,7 +262,7 @@ class GeneticAlgorithm(Optimizer):
             self.population = new_population
             
             # Print progress
-            print(f"Best fitness: {-self.surrogate.best_perplexity:.2f} (perplexity: {self.surrogate.best_perplexity:.2f})")
+            print(f"Best fitness: {-self.surrogate.best_perplexity:.5f} (perplexity: {self.surrogate.best_perplexity:.2f})")
         
         if early_stopping_flag:
             print("\nStopped early at generation:",self.current_generation+1)
@@ -259,4 +275,5 @@ class GeneticAlgorithm(Optimizer):
         print(f"\nEvolution complete!")
         print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
         print(f"Best architecture: {self.best_individual}")
+        print(f"Best fitness: {self.best_individual.fitness}")
         return self.best_individual

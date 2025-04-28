@@ -120,6 +120,7 @@ class GrammaticalEvolution(Optimizer):
             if individual.fitness > self.best_fitness:
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()
+                self.best_individual.fitness = self.best_fitness
                 self.gens_since_last_improvement = 0
             else:
                 self.gens_since_last_improvement += 1
@@ -199,7 +200,7 @@ class GrammaticalEvolution(Optimizer):
             self.evaluate_population()
             
             # Check early stopping criteria
-            if self.gens_since_last_improvement >= self.patience:
+            if self.gens_since_last_improvement == self.patience:
                 early_stopping_flag = True
                 break
 
@@ -229,7 +230,7 @@ class GrammaticalEvolution(Optimizer):
             self.population = new_population
             
             # Print progress
-            print(f"Best fitness: {-self.surrogate.best_perplexity:.2f} (perplexity: {self.surrogate.best_perplexity:.2f})")
+            print(f"Best fitness: {-self.surrogate.best_perplexity:.5f} (perplexity: {self.surrogate.best_perplexity:.2f})")
         
         if early_stopping_flag:
             print("\nStopped early at generation:", self.current_generation+1)
