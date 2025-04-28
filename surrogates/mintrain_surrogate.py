@@ -32,37 +32,37 @@ class TerminalTrainingCallback(tf.keras.callbacks.Callback):
         print(f"Seed: {self.seed if self.seed is not None else 'Not specified'}")
         print(f"Architecture: {self.architecture[:200] + '...' if self.architecture and len(self.architecture) > 200 else self.architecture}")
         print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'-'*80}")
-        print(f"{'Epoch':^6} | {'Train Loss':^12} | {'Val Loss':^12} | {'Perplexity':^12} | {'Best':^8} | {'Time':^10}")
-        print(f"{'-'*80}")
     
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        train_loss = logs.get('loss', None)
+        # train_loss = logs.get('loss', None)
         val_loss = logs.get('val_loss', None)
-        time_elapsed = time.time() - self.start_time
+        # time_elapsed = time.time() - self.start_time
         
         # Calculate perplexity from validation loss
         if val_loss is not None:
             perplexity = np.exp(val_loss)
             
             # Track best perplexity
-            is_best = ""
+            # is_best = ""
             if perplexity < self.best_perplexity:
                 self.best_perplexity = perplexity
                 self.best_epoch = epoch + 1
-                is_best = "✓"
+                # is_best = "✓"
         else:
             perplexity = None
-            is_best = ""
+            # is_best = ""
         
-        # Format values for display
-        train_loss_str = f"{train_loss:.4f}" if train_loss is not None else "N/A"
-        val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
-        perplexity_str = f"{perplexity:.4f}" if perplexity is not None else "N/A"
+        # # Format values for display
+        # train_loss_str = f"{train_loss:.4f}" if train_loss is not None else "N/A"
+        # val_loss_str = f"{val_loss:.4f}" if val_loss is not None else "N/A"
+        # perplexity_str = f"{perplexity:.4f}" if perplexity is not None else "N/A"
         
-        # Print progress
-        print(f"{epoch+1:6d} | {train_loss_str:12} | {val_loss_str:12} | {perplexity_str:12} | {is_best:^8} | {time_elapsed:.2f}s")
+        # # Print progress
+        # print(f"\n{'-'*80}")
+        # print(f"{'Epoch':^6} | {'Train Loss':^12} | {'Val Loss':^12} | {'Perplexity':^12} | {'Best':^8} | {'Time':^10}")
+        # print(f"{'-'*80}")
+        # print(f"{epoch+1:6d} | {train_loss_str:12} | {val_loss_str:12} | {perplexity_str:12} | {is_best:^8} | {time_elapsed:.2f}s")
     
     def on_train_end(self, logs=None):
         logs = logs or {}
@@ -119,6 +119,9 @@ class SimplifiedMinTrainSurrogate:
         self.best_perplexity = float('inf')
         self.best_individual = None
         
+        # Initialize fitness cache dictionary
+        self.fitness_cache = {}
+        
         # Generate timestamp for reference
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
@@ -139,6 +142,7 @@ class SimplifiedMinTrainSurrogate:
     def evaluate(self, individual, seed=None):
         """
         Train the individual's model for a fixed number of epochs and return fitness.
+        If the individual has been evaluated before, return the cached fitness value.
         
         Args:
             individual: An Individual with a build_model method
@@ -149,6 +153,12 @@ class SimplifiedMinTrainSurrogate:
         """
         # Get individual ID
         individual_id = individual.getId() if hasattr(individual, 'getId') else str(id(individual))
+        
+        # Check if individual is in cache
+        if individual_id in self.fitness_cache:
+            fitness = self.fitness_cache[individual_id]
+            individual.fitness = fitness
+            return fitness
         
         # Get individual architecture
         architecture = str(individual) if hasattr(individual, '__str__') else None
@@ -193,6 +203,9 @@ class SimplifiedMinTrainSurrogate:
         # Set fitness score (negative perplexity, so higher is better)
         fitness = -val_perplexity
         individual.fitness = fitness
+        
+        # Store in cache
+        self.fitness_cache[individual_id] = fitness
         
         return fitness
     

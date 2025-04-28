@@ -96,8 +96,10 @@ def test_ge_evolution():
     print("\n========== Testing Grammatical Evolution Evolution ==========")
     
     # Create simple surrogate
-    surrogate = SimpleSurrogate()
-    
+    # surrogate = SimpleSurrogate()
+    surrogate = SimplifiedMinTrainSurrogate(get_ptb_dataset(seq_length=35, batch_size=20))
+
+
     # Create GE optimizer with small population and generations
     ge = GrammaticalEvolution(
         surrogate=surrogate,
@@ -137,22 +139,22 @@ def main():
     np.random.seed(42)
     
     # Test GA evolution
-    ga_best = test_ga_evolution()
+    # ga_best = test_ga_evolution()
     
     # Test GE evolution
     ge_best = test_ge_evolution()
     
     # Compare results
     print("\n========== Comparison of Results ==========")
-    print(f"GA Best Fitness: {ga_best.fitness:.4f}")
+    # print(f"GA Best Fitness: {ga_best.fitness:.4f}")
     print(f"GE Best Fitness: {ge_best.fitness:.4f}")
     
-    if ga_best.fitness > ge_best.fitness:
-        print("GA performed better in this test.")
-    elif ge_best.fitness > ga_best.fitness:
-        print("GE performed better in this test.")
-    else:
-        print("Both algorithms performed equally.")
+    # if ga_best.fitness > ge_best.fitness:
+    #     print("GA performed better in this test.")
+    # elif ge_best.fitness > ga_best.fitness:
+    #     print("GE performed better in this test.")
+    # else:
+    #     print("Both algorithms performed equally.")
     
     print("\nAll tests completed!")
 

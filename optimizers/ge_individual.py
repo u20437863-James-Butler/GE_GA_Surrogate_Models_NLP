@@ -1,8 +1,9 @@
-import random
+import random 
 import numpy as np
 from tensorflow import keras
 from keras import layers
 import hashlib
+import re
 from optimizers.individual import Individual
 
 class GE_Individual(Individual):
@@ -18,17 +19,57 @@ class GE_Individual(Individual):
         
         # Phenotype will hold the decoded architecture
         self.phenotype = None
-
+        
+        # Architecture details to be parsed from phenotype
+        self.architecture = {
+            "layer_counts": 0,
+            "units": [],
+            "activations": [],
+            "dropout": 0.0
+        }
+        
         # Id stored as it cannot be easily constructed by the 
         self.id = id if id is not None else str(self.genotype)
 
     def setGene(self, gene):
         self.genotype = gene
         self.phenotype = None
+        # Reset architecture details when genotype changes
+        self.architecture = {
+            "layer_counts": 0,
+            "units": [],
+            "activations": [],
+            "dropout": 0.0
+        }
 
     def setPhenotype(self, phenotype):
         self.phenotype = phenotype
+        # Parse phenotype to extract architecture details
+        self._parse_phenotype()
     
+    def _parse_phenotype(self):
+        """Parse phenotype to extract architecture details"""
+        if not self.phenotype:
+            return
+        
+        # Extract layer count
+        rnn_layers = self.phenotype.count('rnn_layer = getattr')
+        self.architecture["layer_counts"] = rnn_layers
+        
+        # Extract units
+        units_pattern = r"model\.add\(rnn_layer\((\d+),"
+        self.architecture["units"] = [int(match) for match in re.findall(units_pattern, self.phenotype)]
+        
+        # Extract activations
+        activation_pattern = r"activation='(\w+)'"
+        self.architecture["activations"] = re.findall(activation_pattern, self.phenotype)
+        
+        # Extract dropout
+        dropout_pattern = r"Dropout\((0\.\d+)\)"
+        dropout_matches = re.findall(dropout_pattern, self.phenotype)
+        if dropout_matches:
+            self.architecture["dropout"] = float(dropout_matches[0])
+
     def getId(self):
         """Generate a unique short ID based on the individual's architecture."""
         hash_id = hashlib.md5(self.id.encode()).hexdigest()[:8]
@@ -40,11 +81,14 @@ class GE_Individual(Individual):
 
     def copy(self):
         """Creates a deep copy of the individual."""
-        return GE_Individual(
+        new_individual = GE_Individual(
             seed=self.seed,
             genotype=self.genotype[:],
             id=self.id
         )
+        if self.phenotype:
+            new_individual.setPhenotype(self.phenotype)
+        return new_individual
 
     def getFitness(self):
         """Returns the fitness score."""
@@ -92,7 +136,15 @@ class GE_Individual(Individual):
         except Exception as e:
             print(f"Error building model: {e}")
             return None
-    
+
     def __str__(self):
         """String representation of the individual."""
-        return self.id
+        # Format similar to GA_Individual's __str__ method
+        return (
+            f"Individual(id={self.getId()}, "
+            f"layers={self.architecture['layer_counts']}, "
+            f"units={self.architecture['units']}, "
+            f"activations={self.architecture['activations']}, "
+            f"dropout={self.architecture['dropout']:.3f}, "
+            f"seed={self.seed})"
+        )
