@@ -117,7 +117,7 @@ class Evaluator:
         print(f"{'Run':<5} {'Evo Fitness':<15} {'Full Training Val Perplexity'}")
         print("-" * 50)
         for result in self.full_training_results:
-            print(f"{result['run']:<5} {result['fitness']:<15.4f} {result['full_training_result']['val_perplexity']}")
+            print(f"{result['run']:<5} {result['fitness']:<15.4f} {result['full_training_result']['test_perplexity']}")
         
         print(f"\nBest architecture: {self.best_individual}")
         

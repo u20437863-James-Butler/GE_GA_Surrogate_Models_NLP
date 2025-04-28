@@ -48,37 +48,32 @@ class FullTrainer:
         # Get individual ID
         individual_id = individual.getId() if hasattr(individual, 'getId') else str(id(individual))
         
-        # Get individual architecture
+        # Get individual architecture (shorter summary)
         architecture = str(individual) if hasattr(individual, '__str__') else None
+        arch_summary = architecture[:100] + '...' if architecture and len(architecture) > 100 else architecture
         
-        print(f"\n{'='*80}")
+        print(f"\n{'='*50}")
         print(f"FULL TRAINING OF BEST ARCHITECTURE")
         print(f"Individual ID: {individual_id}")
-        print(f"Architecture: {architecture[:200] + '...' if architecture and len(architecture) > 200 else architecture}")
+        print(f"Architecture: {arch_summary}")
         print(f"Training for {self.num_epochs} epochs")
-        print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"{'='*80}\n")
+        print(f"{'='*50}\n")
         
         # Set seed if provided
         if seed is not None:
             tf.random.set_seed(seed)
             np.random.seed(seed)
         
-        # Create callback for training monitoring
-        from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-        
+        # Create callbacks
         callbacks = []
         
-        # Monitor training progress
+        # Monitor training progress with simplified callback
         if self.verbose > 0:
-            from tensorflow.keras.callbacks import CSVLogger, TensorBoard
-            
-            # Terminal callback for visual feedback
-            terminal_callback = self._create_terminal_callback(individual_id, seed, architecture)
+            terminal_callback = self._create_terminal_callback()
             callbacks.append(terminal_callback)
             
             # Early stopping to prevent overfitting
-            early_stopping = EarlyStopping(
+            early_stopping = tf.keras.callbacks.EarlyStopping(
                 monitor='val_loss',
                 patience=5,
                 restore_best_weights=True,
@@ -102,84 +97,68 @@ class FullTrainer:
             callbacks=callbacks
         )
         
-        # Calculate final metrics
-        train_loss = model.evaluate(self.train_data[0], self.train_data[1], verbose=0)[0]
-        val_loss = model.evaluate(self.valid_data[0], self.valid_data[1], verbose=0)[0]
+        # Only evaluate on test data (skip re-evaluating train and validation)
         test_loss = model.evaluate(self.test_data[0], self.test_data[1], verbose=0)[0]
-        
-        # Calculate perplexities
-        train_perplexity = np.exp(train_loss)
-        val_perplexity = np.exp(val_loss)
         test_perplexity = np.exp(test_loss)
         
         # Total training time
         training_time = time.time() - start_time
         
-        # Print results
-        print(f"\n{'='*80}")
+        # Print results (simplified)
+        print(f"\n{'='*50}")
         print(f"FULL TRAINING RESULTS")
-        print(f"{'='*80}")
+        print(f"{'='*50}")
         print(f"Training completed in {training_time:.2f}s")
-        print(f"Training loss: {train_loss:.4f} (perplexity: {train_perplexity:.4f})")
-        print(f"Validation loss: {val_loss:.4f} (perplexity: {val_perplexity:.4f})")
         print(f"Test loss: {test_loss:.4f} (perplexity: {test_perplexity:.4f})")
-        print(f"{'='*80}\n")
+        print(f"{'='*50}\n")
         
-        # Package results
+        # Package results (simplified)
         results = {
             'model': model,
             'history': history.history,
             'training_time': training_time,
-            'train_loss': train_loss,
-            'val_loss': val_loss,
             'test_loss': test_loss,
-            'train_perplexity': train_perplexity,
-            'val_perplexity': val_perplexity,
             'test_perplexity': test_perplexity,
             'individual': individual
         }
         
         return results
-    
-    def _create_terminal_callback(self, individual_id, seed, architecture):
-        """Create a terminal callback for training visualization"""
+
+    def _create_terminal_callback(self):
+        """Create a simplified terminal callback for training visualization"""
         class FullTrainingCallback(tf.keras.callbacks.Callback):
-            def __init__(self, individual_id, seed, architecture):
+            def __init__(self):
                 super().__init__()
-                self.individual_id = individual_id
-                self.seed = seed
-                self.architecture = architecture
                 self.start_time = None
-                self.best_perplexity = float('inf')
-                self.best_epoch = 0
-                self.num_epochs = None  # Will be set in on_train_begin
+                self.best_val_loss = float('inf')
+                self.num_epochs = None
             
             def on_train_begin(self, logs=None):
                 self.start_time = time.time()
-                # Get total epochs from the params dictionary
                 self.num_epochs = self.params['epochs']
             
             def on_epoch_end(self, epoch, logs=None):
                 logs = logs or {}
-                val_loss = logs.get('val_loss', None)
                 time_elapsed = time.time() - self.start_time
                 
-                # Calculate metrics
-                train_loss = logs.get('loss', None)
-                train_ppl = np.exp(train_loss) if train_loss is not None else None
-                val_ppl = np.exp(val_loss) if val_loss is not None else None
+                # Basic metrics
+                train_loss = logs.get('loss', 0)
+                val_loss = logs.get('val_loss', 0)
                 
-                # Track best performance
+                # Only calculate perplexity for display
+                train_ppl = np.exp(train_loss)
+                val_ppl = np.exp(val_loss)
+                
+                # Simple best marker
                 is_best = ""
-                if val_ppl is not None and val_ppl < self.best_perplexity:
-                    self.best_perplexity = val_ppl
-                    self.best_epoch = epoch + 1
+                if val_loss < self.best_val_loss:
+                    self.best_val_loss = val_loss
                     is_best = "✓"
                 
                 # Format the output
-                print(f"\nEpoch {epoch+1}/{self.num_epochs}: "
-                    f"loss={train_loss:.4f} ({train_ppl:.2f}), "
-                    f"val_loss={val_loss:.4f} ({val_ppl:.2f}) "
+                print(f"Epoch {epoch+1}/{self.num_epochs}: "
+                    f"loss={train_loss:.4f} (ppl={train_ppl:.2f}), "
+                    f"val_loss={val_loss:.4f} (ppl={val_ppl:.2f}) "
                     f"{is_best} [{time_elapsed:.1f}s]")
         
-        return FullTrainingCallback(individual_id, seed, architecture)
+        return FullTrainingCallback()

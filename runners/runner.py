@@ -123,7 +123,7 @@ def main():
 
     # Run experiment
     print(f"Running NAS experiment with {config['dataset']['name']} dataset using {config['surrogate']['name']} surrogate and {config['optimizer']['name']} optimizer")
-    best_individual,  = evaluator.run(config["evaluator"]["starter_seed"])
+    best_individual, _ = evaluator.run(config["evaluator"]["starter_seed"])
     return best_individual
 
 if __name__ == "__main__":
