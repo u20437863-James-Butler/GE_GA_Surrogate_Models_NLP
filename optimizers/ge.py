@@ -24,6 +24,11 @@ class GrammaticalEvolution(Optimizer):
         self.crossover_rate = crossover_rate
         self.seed = seed
 
+        # Track for early stopping
+        self.patience = 3
+        self.gens_since_last_improvement = 0
+        self.current_generation = 0
+
         self.population = self.generate_population(seed=self.seed)
 
         # Track best individual and fitness
@@ -102,15 +107,22 @@ class GrammaticalEvolution(Optimizer):
         """
         Evaluate the entire population using the surrogate model.
         """
+        # Initialize phenotypes for any individuals that don't have them
+        for individual in self.population:
+            if not hasattr(individual, 'phenotype') or individual.phenotype is None:
+                individual.setPhenotype(self.genotype_to_phenotype(individual.genotype))
+
         # Use the surrogate to evaluate all individuals
-        log_filename = f"generation_{self.current_generation}"
-        fitness_scores = self.surrogate.evaluate_population(self.population, base_log_filename=log_filename)
+        fitness_scores = self.surrogate.evaluate_population(self.population)
         
         # Update best individual if needed
         for i, individual in enumerate(self.population):
             if individual.fitness > self.best_fitness:
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()
+                self.gens_since_last_improvement = 0
+            else:
+                self.gens_since_last_improvement += 1
                 
         return fitness_scores
 
@@ -125,36 +137,112 @@ class GrammaticalEvolution(Optimizer):
     def crossover(self, parent1, parent2):
         """
         Performs crossover between two parent genotypes.
+        
+        Args:
+            parent1: First parent individual
+            parent2: Second parent individual
+            
+        Returns:
+            Individual: New child individual
         """
+        # Create new child with shared seed for weight consistency
+        child_seed = random.choice([parent1.seed, parent2.seed])
+        child = GE_Individual(seed=child_seed)
+        
         if random.random() < self.crossover_rate:
-            point = random.randint(1, len(parent1) - 1)
-            return parent1[:point] + parent2[point:]
-        return parent1
+            # Perform actual crossover
+            point = random.randint(1, min(len(parent1.genotype), len(parent2.genotype)) - 1)
+            child.genotype = parent1.genotype[:point] + parent2.genotype[point:]
+        else:
+            # No crossover, just clone one parent
+            child.genotype = random.choice([parent1.genotype, parent2.genotype]).copy()
+        
+        # Set phenotype based on the new genotype
+        child.setPhenotype(self.genotype_to_phenotype(child.genotype))
+        return child
     
-    def mutate(self, genotype):
+    def mutate(self, individual):
         """
-        Mutates a genotype by changing one random aspect.
+        Mutates an individual's genotype by changing random genes.
+        
+        Args:
+            individual: Individual to mutate
         """
-        if random.random() < self.mutation_rate:
-            idx = random.randint(0, len(genotype) - 1)
-            genotype[idx] = random.randint(0, 255)
+        # Make a copy of the genotype to avoid modifying the original
+        genotype = individual.genotype.copy()
+        
+        # Apply mutation with probability based on mutation rate
+        for i in range(len(genotype)):
+            if random.random() < self.mutation_rate:
+                genotype[i] = random.randint(0, 255)
+        
+        # Update individual's genotype and phenotype
+        individual.genotype = genotype
+        individual.setPhenotype(self.genotype_to_phenotype(genotype))
 
-    def evolve(self, x_train, y_train, x_val, y_val):
+    def evolve(self):
         """
-        Runs the evolutionary process.
+        Run the grammatical evolution process.
+        
+        Returns:
+            Individual: The best individual found
         """
-        for generation in range(self.generations):
-            fitness_scores = self.evaluate_population(x_train, y_train, x_val, y_val)
+        print(f"Starting evolution with population size: {self.pop_size}, generations: {self.generations}")
+        
+        early_stopping_flag = False
+
+        for gen in range(self.generations):
+            self.current_generation = gen
+            print(f"\nGeneration {gen+1}/{self.generations}")
+            
+            # Evaluate current population
+            self.evaluate_population()
+            
+            # Check early stopping criteria
+            if self.gens_since_last_improvement >= self.patience:
+                early_stopping_flag = True
+                break
+
+            # Create new population through selection, crossover, and mutation
             new_population = []
-            for _ in range(self.pop_size):
-                p1 = self.select_parents(fitness_scores)
-                p2 = self.select_parents(fitness_scores)
-                child = self.crossover(self.population[p1], self.population[p2])
+            
+            # Elitism: keep the best individual
+            if self.best_individual is not None:
+                new_population.append(self.best_individual.copy())
+            
+            # Generate rest of population
+            while len(new_population) < self.pop_size:
+                # Tournament selection
+                parent1 = self.select_parents()
+                parent2 = self.select_parents()
+                
+                # Create child through crossover
+                child = self.crossover(parent1, parent2)
+                
+                # Mutate child
                 self.mutate(child)
+                
+                # Add to new population
                 new_population.append(child)
+            
+            # Replace old population
             self.population = new_population
-        best_index = min(range(self.pop_size), key=lambda i: fitness_scores[i])
-        return self.genotype_to_phenotype(self.population[best_index])
+            
+            # Print progress
+            print(f"Best fitness: {-self.surrogate.best_perplexity:.2f} (perplexity: {self.surrogate.best_perplexity:.2f})")
+        
+        if early_stopping_flag:
+            print("\nStopped early at generation:", self.current_generation+1)
+        else:
+            # Final evaluation
+            self.current_generation = self.generations
+            print("\nFinal evaluation")
+            self.evaluate_population()
+        
+        print(f"\nEvolution complete!")
+        print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
+        print(f"Best architecture: {self.best_individual}")
+        return self.best_individual
 
     def genotype_to_phenotype(self, genotype):
         """

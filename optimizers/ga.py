@@ -21,6 +21,11 @@ class GeneticAlgorithm(Optimizer):
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.seed = seed
+
+        # Track for early stopping
+        self.patience = 3
+        self.gens_since_last_improvement = 0
+        self.current_generation = 0
         
         # Generate random initial population
         self.population = self.generate_population(seed=self.seed)
@@ -87,22 +92,22 @@ class GeneticAlgorithm(Optimizer):
         Evaluate the entire population using the surrogate model.
         """
         # Use the surrogate to evaluate all individuals
-        log_filename = f"generation_{self.current_generation}"
-        fitness_scores = self.surrogate.evaluate_population(self.population, base_log_filename=log_filename)
-        
+        fitness_scores = self.surrogate.evaluate_population(self.population)
         # Update best individual if needed
         for i, individual in enumerate(self.population):
             if individual.fitness > self.best_fitness:
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()
-                
+                self.gens_since_last_improvement = 0
+            else:
+                self.gens_since_last_improvement += 1
         return fitness_scores
     
     def select_parents(self):
         """
         Tournament selection - select the best individual from a random sample.
         """
-        tournament_size = max(2, self.pop_size // 5)  # Adjust tournament size based on population
+        tournament_size = max(2, self.pop_size // 5)
         tournament = random.sample(self.population, tournament_size)
         return max(tournament, key=lambda ind: ind.fitness)
     
@@ -129,7 +134,8 @@ class GeneticAlgorithm(Optimizer):
         # Build layers from each parent
         units = []
         activations = []
-        for i in layer_counts:
+        for i in range(layer_counts):
+            # Pad with unit 16 and activation tabh if a parent's layer count is too small
             units.append(random.choice([parent1,parent2]).units[i])
             units.append(random.choice([parent1,parent2]).activations[i])
         
@@ -190,7 +196,7 @@ class GeneticAlgorithm(Optimizer):
                     
             elif mutation_type == 3:
                 # Mutate dropout
-                individual.dropout = random.uniform(0, 0.9)
+                individual.dropout = random.randint(0, 9) * 0.1
     
     def evolve(self):
         """
@@ -201,6 +207,8 @@ class GeneticAlgorithm(Optimizer):
         """
         print(f"Starting evolution with population size: {self.pop_size}, generations: {self.generations}")
         
+        early_stopping_flag = False
+
         for gen in range(self.generations):
             self.current_generation = gen
             print(f"\nGeneration {gen+1}/{self.generations}")
@@ -208,6 +216,11 @@ class GeneticAlgorithm(Optimizer):
             # Evaluate current population
             self.evaluate_population()
             
+            # Check early stopping criteria
+            if self.gens_since_last_improvement == self.patience:
+                early_stopping_flag = True
+                break
+
             # Create new population through selection, crossover, and mutation
             new_population = []
             
@@ -216,6 +229,7 @@ class GeneticAlgorithm(Optimizer):
             
             # Generate rest of population
             while len(new_population) < self.pop_size:
+                # Tournament selection
                 parent1 = self.select_parents()
                 parent2 = self.select_parents()
                 
@@ -234,13 +248,15 @@ class GeneticAlgorithm(Optimizer):
             # Print progress
             print(f"Best fitness: {-self.surrogate.best_perplexity:.2f} (perplexity: {self.surrogate.best_perplexity:.2f})")
         
-        # Final evaluation
-        self.current_generation = self.generations
-        print("\nFinal evaluation")
-        self.evaluate_population()
+        if early_stopping_flag:
+            print("\nStopped early at generation:",self.current_generation+1)
+        else:
+            # Final evaluation
+            self.current_generation = self.generations
+            print("\nFinal evaluation")
+            self.evaluate_population()
         
         print(f"\nEvolution complete!")
         print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
         print(f"Best architecture: {self.best_individual}")
-        
         return self.best_individual
