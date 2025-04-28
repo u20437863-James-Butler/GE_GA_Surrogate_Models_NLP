@@ -241,8 +241,9 @@ class GrammaticalEvolution(Optimizer):
             self.evaluate_population()
         
         print(f"\nEvolution complete!")
-        print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
-        print(f"Best architecture: {self.best_individual}")
+        # print(f"Best perplexity: {self.surrogate.best_perplexity:.4f}")
+        # print(f"Best architecture: {self.best_individual}")
+        self.best_individual.fitness = -self.surrogate.best_perplexity
         return self.best_individual
 
     def genotype_to_phenotype(self, genotype):
