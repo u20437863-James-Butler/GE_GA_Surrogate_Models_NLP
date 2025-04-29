@@ -6,24 +6,24 @@
     },
     "surrogate": {
         "name": "smt",
-        "num_epochs": 1,
+        "num_epochs": 10,
         "batch_size": 512,
         "verbose": 1
     },
     "optimizer": {
-        "name": "ga",
-        "pop_size": 2,
-        "generations": 1,
+        "name": "ge",
+        "pop_size": 20,
+        "generations": 5,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
-        "seed": 41
+        "seed": 10
     },
     "evaluator": {
         "name": "base",
-        "num_runs": 1,
+        "num_runs": 5,
         "log_interval": 1,
-        "starter_seed": 42,
-        "full_runs": 1
+        "starter_seed": 10,
+        "full_runs": 40
     },
     "experiment": {
         "description": "Default experiment configuration",
