@@ -16,14 +16,14 @@
         "generations": 5,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
-        "seed": 20
+        "seed": 50
     },
     "evaluator": {
         "name": "base",
         "num_runs": 5,
         "log_interval": 1,
-        "starter_seed": 20,
-        "full_runs": 40
+        "starter_seed": 10,
+        "full_runs": 50
     },
     "experiment": {
         "description": "Default experiment configuration",
