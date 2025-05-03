@@ -61,7 +61,7 @@ class Evaluator:
             print(f"Run {self.run_count + 1}/{self.max_runs}")
             print(f"{'='*50}")
             print("Generating initial population...")
-            self.optimizer.population = self.optimizer.generate_population(seed=seed + self.run_count)
+            self.optimizer.population = self.optimizer.generate_population(seed=seed)
             
             # Get the best individual from this run
             individual = self.optimizer.evolve()

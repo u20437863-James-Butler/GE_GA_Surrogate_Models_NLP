@@ -111,9 +111,6 @@ class GeneticAlgorithm(Optimizer):
                 self.best_fitness = individual.fitness
                 self.best_individual = individual.copy()
                 self.best_individual.fitness = self.best_fitness
-                self.gens_since_last_improvement = 0
-            else:
-                self.gens_since_last_improvement += 1
         return fitness_scores
     
     def select_parents(self):
@@ -256,11 +253,6 @@ class GeneticAlgorithm(Optimizer):
                     best_perplexity=self.surrogate.best_perplexity,
                     best_architecture=str(self.best_individual)
                 )
-            
-            # Check early stopping criteria
-            if self.gens_since_last_improvement == self.patience:
-                early_stopping_flag = True
-                break
 
             # Create new population through selection, crossover, and mutation
             new_population = []
@@ -289,27 +281,24 @@ class GeneticAlgorithm(Optimizer):
             # Print progress
             print(f"Best fitness: {-self.surrogate.best_perplexity:.5f} (perplexity: {self.surrogate.best_perplexity:.2f})")
         
-        if early_stopping_flag:
-            print("\nStopped early at generation:", self.current_generation+1)
-        else:
-            # Final evaluation
-            self.current_generation = self.generations
-            print("\nFinal evaluation")
+        # Final evaluation
+        self.current_generation = self.generations
+        print("\nFinal evaluation")
+        
+        # Start timing final evaluation if logger is available
+        if self.logger:
+            self.logger.start_generation()
             
-            # Start timing final evaluation if logger is available
-            if self.logger:
-                self.logger.start_generation()
-                
-            self.evaluate_population()
-            
-            # Log final generation if logger is available
-            if self.logger:
-                self.logger.log_generation(
-                    generation=self.current_generation+1,
-                    best_fitness=-self.surrogate.best_perplexity,
-                    best_perplexity=self.surrogate.best_perplexity,
-                    best_architecture=str(self.best_individual)
-                )
+        self.evaluate_population()
+        
+        # Log final generation if logger is available
+        if self.logger:
+            self.logger.log_generation(
+                generation=self.current_generation+1,
+                best_fitness=-self.surrogate.best_perplexity,
+                best_perplexity=self.surrogate.best_perplexity,
+                best_architecture=str(self.best_individual)
+            )
         
         print(f"\nEvolution complete!")
         # Log final results if logger is available

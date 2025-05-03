@@ -100,7 +100,8 @@ class SimplifiedMinTrainSurrogate:
         
         Args:
             dataset: Dataset object containing training, validation and test data
-            num_epochs: Fixed number of epochs to train each model (default: 10)
+            num_epochs: Fixed number of epochs to train each model (default: 1)
+                        Set to 0 to skip training and only evaluate model on test set
             batch_size: Batch size for training
             verbose: Verbosity level (0: silent, 1: show training progress)
         """
@@ -114,6 +115,7 @@ class SimplifiedMinTrainSurrogate:
         # Prepare data tuples
         self.train_data = (self.x_train, self.y_train)
         self.valid_data = (self.x_val, self.y_val)
+        self.test_data = (self.x_test, self.y_test)
         
         # Track best model
         self.best_perplexity = float('inf')
@@ -128,9 +130,12 @@ class SimplifiedMinTrainSurrogate:
         print(f"\n{'='*80}")
         print(f"Initialized SimplifiedMinTrainSurrogate")
         print(f"Timestamp: {self.timestamp}")
-        print(f"Epochs: {self.num_epochs}, Batch size: {self.batch_size}")
+        if num_epochs == 0:
+            print(f"Mode: Evaluation only (0 epochs)")
+        else:
+            print(f"Epochs: {self.num_epochs}, Batch size: {self.batch_size}")
         print(f"Input shape: {self.input_shape}, Output dimension: {self.output_dim}")
-        print(f"Training samples: {len(self.x_train)}, Validation samples: {len(self.x_val)}")
+        print(f"Training samples: {len(self.x_train)}, Validation samples: {len(self.x_val)}, Test samples: {len(self.x_test)}")
         print(f"{'='*80}\n")
     
     def calculate_perplexity(self, model, data):
@@ -142,6 +147,7 @@ class SimplifiedMinTrainSurrogate:
     def evaluate(self, individual, seed=None):
         """
         Train the individual's model for a fixed number of epochs and return fitness.
+        If num_epochs=0, skip training and only evaluate on test set.
         If the individual has been evaluated before, return the cached fitness value.
         
         Args:
@@ -168,37 +174,75 @@ class SimplifiedMinTrainSurrogate:
             tf.random.set_seed(seed)
             np.random.seed(seed)
             
-        # Create callback if verbose
-        callbacks = []
-        if self.verbose > 0:
-            terminal_callback = TerminalTrainingCallback(
-                individual_id=individual_id,
-                seed=seed,
-                architecture=architecture
-            )
-            callbacks.append(terminal_callback)
-        
         # Build model from individual
         model = individual.build_model(self.input_shape, self.output_dim)
         
-        # Train model
-        history = model.fit(
-            self.train_data[0], self.train_data[1],
-            epochs=self.num_epochs,
-            batch_size=self.batch_size,
-            validation_data=self.valid_data,
-            verbose=self.verbose,
-            callbacks=callbacks
-        )
-        
-        # Calculate validation perplexity (lower is better)
-        val_perplexity = self.calculate_perplexity(model, self.valid_data)
-        
+        # Skip training if num_epochs is 0
+        if self.num_epochs == 0:
+            if self.verbose > 0:
+                print(f"\n{'-'*80}")
+                print(f"Evaluating individual without training: {individual_id}")
+                print(f"Seed: {seed if seed is not None else 'Not specified'}")
+                print(f"Architecture: {architecture[:200] + '...' if architecture and len(architecture) > 200 else architecture}")
+                
+                # Calculate test set perplexity
+                test_start_time = time.time()
+                test_perplexity = self.calculate_perplexity(model, self.test_data)
+                test_time = time.time() - test_start_time
+                
+                print(f"Test perplexity: {test_perplexity:.4f}")
+                print(f"Evaluation completed in {test_time:.2f}s")
+                print(f"{'-'*80}\n")
+                
+            else:
+                # Just evaluate on test set without verbose output
+                test_perplexity = self.calculate_perplexity(model, self.test_data)
+                
+            # For zero-epoch mode, use test perplexity as fitness
+            val_perplexity = test_perplexity
+            
+            # Set placeholder values for metrics that would normally come from training
+            individual.train_loss = 0.0
+            individual.val_loss = 0.0
+            individual.best_epoch = 0
+            
+        else:
+            # Create callback if verbose
+            callbacks = []
+            if self.verbose > 0:
+                terminal_callback = TerminalTrainingCallback(
+                    individual_id=individual_id,
+                    seed=seed,
+                    architecture=architecture
+                )
+                callbacks.append(terminal_callback)
+            
+            # Train model
+            history = model.fit(
+                self.train_data[0], self.train_data[1],
+                epochs=self.num_epochs,
+                batch_size=self.batch_size,
+                validation_data=self.valid_data,
+                verbose=self.verbose,
+                callbacks=callbacks
+            )
+            
+            # Calculate validation perplexity (lower is better)
+            val_perplexity = self.calculate_perplexity(model, self.valid_data)
+            
+            # Store metrics on individual
+            individual.train_loss = history.history['loss'][-1] if 'loss' in history.history else None
+            individual.val_loss = history.history['val_loss'][-1] if 'val_loss' in history.history else None
+            individual.best_epoch = callbacks[0].best_epoch if callbacks else self.num_epochs
+            
         # Track best model
         if val_perplexity < self.best_perplexity:
             self.best_perplexity = val_perplexity
             self.best_individual = individual.copy()
             print(f"New best model found! Perplexity: {val_perplexity:.4f}")
+        
+        # Store test perplexity on individual
+        individual.test_perplexity = self.calculate_perplexity(model, self.test_data)
         
         # Set fitness score (negative perplexity, so higher is better)
         fitness = -val_perplexity
@@ -226,6 +270,10 @@ class SimplifiedMinTrainSurrogate:
         print(f"\n{'='*80}")
         print(f"Evaluating population of {len(population)} individuals")
         print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        if self.num_epochs == 0:
+            print(f"Mode: Evaluation only (0 epochs)")
+        else:
+            print(f"Training for {self.num_epochs} epochs per individual")
         print(f"{'='*80}")
         
         for i, individual in enumerate(population):
