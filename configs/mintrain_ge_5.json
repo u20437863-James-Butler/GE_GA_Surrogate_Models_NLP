@@ -16,13 +16,13 @@
         "generations": 10,
         "mutation_rate": 0.2,
         "crossover_rate": 0.8,
-        "seed": 20
+        "seed": 50
     },
     "evaluator": {
         "name": "surrogate",
         "num_runs": 1,
         "log_interval": 1,
-        "starter_seed": 20
+        "starter_seed": 50
     },
     "experiment": {
         "description": "Grammatical Evolution Mintrain",

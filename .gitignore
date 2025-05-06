@@ -5,6 +5,8 @@ runners/datasets/
 logs/*
 !logs/__init__.py
 !logs/minTrainLogger.py
+!logs/basic_logger.py
+!logs/opt_logger.py
 mintrain_logs*/
 datasets/ptb_data
 datasets/wikitext2

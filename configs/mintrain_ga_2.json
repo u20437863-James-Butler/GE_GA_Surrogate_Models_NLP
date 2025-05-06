@@ -20,7 +20,7 @@
     },
     "evaluator": {
         "name": "surrogate",
-        "num_runs": 5,
+        "num_runs": 1,
         "log_interval": 1,
         "starter_seed": 20
     },
